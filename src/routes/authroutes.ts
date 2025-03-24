@@ -33,11 +33,10 @@ router.post("/signUp", async (req: any, res: any) => {
         if (!phone || !isValidPhoneNumber(phone)) {
             return res.status(400).json({ message: "Invalid phone number ❌" });
 
-
         }
 
         //mail validation
-        if (!email || !isValidEmail(email)) {
+        if (email || !isValidEmail(email)) {
             return res.status(400).json({ message: "Invalid email format ❌" });
         }
 
@@ -95,7 +94,7 @@ router.post("/signUp", async (req: any, res: any) => {
             userInfo.apartmentName = apartmentName;
             userInfo.blockNumber = blockNumber;
         }
-
+   
 
         
 

@@ -10,10 +10,10 @@ const customerSchema = new mongoose.Schema({
         ref: "User"
     },
 
-    customerID: {
-        type: String,
-        required: true,
-    },
+    // customerID: {
+    //     type: String,
+    //     required: true,
+    // },
 
     customerName: {
         type: String,

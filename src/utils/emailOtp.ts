@@ -28,15 +28,14 @@ async function refreshAccessToken(
     }
 }
 
-const sendMail = async (req: any, toEmail: string, content: any) => {
+const SendMail = async (toEmail: string, content: any) => {
     let accountId;
     let refreshToken;
-    let account: any;
     let accountEmail;
     let clientId;
     let clientSecret;
     let code = 0;
-    let origin;
+
 
 
     accountEmail = "no-reply@dicot.in";
@@ -86,3 +85,5 @@ const sendMail = async (req: any, toEmail: string, content: any) => {
         return code;
     }
 };
+
+export default SendMail;
