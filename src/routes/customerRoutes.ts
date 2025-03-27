@@ -1,6 +1,7 @@
 import express, { response } from "express";
 import Customer from "../models/customer.ts"; // Ensure correct path
 import User from "../models/user.ts";
+import authMiddleware from "../middlewares/authMiddleware.ts";
 //import { Message } from "twilio/lib/twiml/MessagingResponse.js";
 
 const router = express.Router();
@@ -118,6 +119,7 @@ router.post("/addCustommer", async (req: any, res: any) => {
     let Customerinfo: any = {
       id,
       companyName,
+      customerName,
       phoneNumber,
       unitType,
       city,
@@ -125,7 +127,13 @@ router.post("/addCustommer", async (req: any, res: any) => {
       street,
       landmark,
       gstNumber,
+      newsPapers: [],
     };
+
+    if (email) {
+      
+      Customerinfo.email = email;
+    }
 
     if (unitType === "bunglow") {
       if (!bunglowsNo) {
@@ -172,7 +180,7 @@ router.post("/addCustommer", async (req: any, res: any) => {
 
 // Customer list
 
-router.get("/customerList", async (req: any, res: any) => {
+router.get("/customerList", authMiddleware , async (req: any, res: any) => {
   try {
     const { id } = req.query;
     // Fetch all customers
@@ -217,7 +225,7 @@ router.post("/deleteCustomer", async (req: any, res: any) => {
   }
 });
 
-router.put("/updateCustomer", async (req: any, res: any) => {
+router.post("/updateCustomer", async (req: any, res: any) => {
   try {
     const {
       customerID, // _id of the customer
@@ -243,6 +251,7 @@ router.put("/updateCustomer", async (req: any, res: any) => {
 
     // Find existing customer
     const customer = await Customer.findById(customerID);
+    
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
@@ -324,3 +333,5 @@ router.put("/updateCustomer", async (req: any, res: any) => {
     return res.status(500).json({ message: "Server error", error });
   }
 });
+
+export default router;

@@ -17,8 +17,7 @@ const customerSchema = new mongoose.Schema({
 
     customerName: {
         type: String,
-        required: true,
-        unique: true
+        required: true
     },
 
     phoneNumber: {
@@ -103,8 +102,7 @@ const customerSchema = new mongoose.Schema({
     newsPapers: [
         {
             newspaperID: {
-                type: String,
-                unique: true
+                type: String
             },
 
             newspaperName:{

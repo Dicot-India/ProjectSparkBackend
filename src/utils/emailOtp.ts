@@ -36,17 +36,13 @@ const SendMail = async (toEmail: string, content: any) => {
     let clientSecret;
     let code = 0;
 
-
+    const accountIdString = "5228294000000002002"
 
     accountEmail = "no-reply@dicot.in";
-    accountId = BigInt(5228294000000002002);
+    accountId = BigInt(accountIdString);
     refreshToken = "1000.a0388a48e4bc6e81fbde11aa38ff5fb5.09335889047b7eea24b6a8b69e8b9d2c";
     clientId = "1000.YPXLBCC95QQEOL1RO5DQB72ZDSB7XP";
     clientSecret = "9a0db798affe331669d324db9a7bb188cc00a251be";
-
-
-
-
 
     const accessToken = await refreshAccessToken(
         refreshToken,
