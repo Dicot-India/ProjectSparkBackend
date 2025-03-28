@@ -10,10 +10,6 @@ const customerSchema = new mongoose.Schema({
         ref: "User"
     },
 
-    // customerID: {
-    //     type: String,
-    //     required: true,
-    // },
 
     customerName: {
         type: String,
@@ -40,64 +36,43 @@ const customerSchema = new mongoose.Schema({
         unique: true
     },
 
-    unitType: {
+    unitNumber: {
         type: String,
-        required: false,
+        required: true,
     },
 
-    bunglowsNo:
-    {
-        type: String,
-        required: false,
-    },
-
-    apartmentName:
-    {
-        type: String,
-        required: false
-    },
-
-    blockNumber:
-    {
-        type: String,
-        required: false
-    },
 
     society:
     {
         type: String,
-        required: false
+        required: true
     },
 
     landmark:
     {
         type: String,
-        required: false,
+        required: true,
     },
 
     street:
     {
         type: String,
-        required: false
+        required: true
     },
 
 
     city:
     {
         type: String,
-        required: false
+        required: true
     },
 
     state:
     {
         type: String,
-        required: false
+        required: true
     },
 
-    verified: {
-        type: Boolean,
-        default: false
-    },
 
     newsPapers: [
         {
@@ -105,7 +80,7 @@ const customerSchema = new mongoose.Schema({
                 type: String
             },
 
-            newspaperName:{
+            newspaperName: {
                 type: String,
                 required: false
             },
@@ -126,5 +101,5 @@ const customerSchema = new mongoose.Schema({
 
 });
 
-const Customer = mongoose.model("Customer",customerSchema);
+const Customer = mongoose.model("Customer", customerSchema);
 export default Customer;

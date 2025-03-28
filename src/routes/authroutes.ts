@@ -1,11 +1,11 @@
 // sign-up
 import express, { response } from "express";
-import User from "../models/user.ts"; // Ensure correct path
+import User from "../models/userModel.ts"; // Ensure correct path
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import SendMail from "../utils/emailOtp.ts";
-import EmailVerification from "../models/emailVerification.ts";
+import EmailVerification from "../models/emailVerificationModel.ts";
 
 const router = express.Router();
 // phoneNumber
@@ -66,6 +66,8 @@ router.post("/signUp", async (req: any, res: any) => {
     const existingNumber = await User.findOne({ phone });
     const existingEmail = await User.findOne({ email });
 
+    console.log("existingEmail:", existingEmail)
+
     if (existingUser) {
       return res
         .status(400)
@@ -78,11 +80,6 @@ router.post("/signUp", async (req: any, res: any) => {
         .json({ message: "User with this phone Number already exists." });
     }
 
-    if (existingEmail) {
-      return res
-        .status(400)
-        .json({ message: "User with this Email already exists." });
-    }
 
     if (!isValidPassword(password)) {
       return res.status(400).send({
@@ -140,6 +137,15 @@ router.post("/signUp", async (req: any, res: any) => {
       return res.status(400).json({ message: "Invalid email format ❌" });
     } else {
       userInfo.email = email;
+    }
+
+
+    if (existingEmail) {
+      if(existingEmail.email){
+        return res
+          .status(400)
+          .json({ message: "User with this Email already exists." });
+      }
     }
 
     console.log("userInfo:", userInfo);
@@ -208,7 +214,7 @@ router.post("/signin", async (req: any, res: any) => {
       } else {
         return res.status(400).send({ message: "First verify email" });
       }
-    } 
+    }
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
@@ -223,7 +229,7 @@ router.post("/signin", async (req: any, res: any) => {
     { expiresIn: "1h" }
   );
 
-  console.log("user:" , user)
+  console.log("user:", user)
   return res.status(200).json({
     message: "Login successful ✅",
     user: {

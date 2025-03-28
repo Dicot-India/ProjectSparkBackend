@@ -1,6 +1,6 @@
 import express, { response } from "express";
-import Customer from "../models/customer.ts"; // Ensure correct path
-import User from "../models/user.ts";
+import Customer from "../models/customerModel.ts"; // Ensure correct path
+import User from "../models/userModel.ts";
 import authMiddleware from "../middlewares/authMiddleware.ts";
 //import { Message } from "twilio/lib/twiml/MessagingResponse.js";
 
@@ -28,10 +28,7 @@ router.post("/addCustommer", async (req: any, res: any) => {
       companyName,
       email,
       gstNumber,
-      unitType,
-      bunglowsNo,
-      apartmentName,
-      blockNumber,
+      unitNumber,
       society,
       landmark,
       street,
@@ -44,8 +41,12 @@ router.post("/addCustommer", async (req: any, res: any) => {
       return res.status(400).json({ message: "ID is required." });
     }
 
-    if (!unitType) {
-      return res.status(400).json({ message: "Unit Type is reuired" });
+    if (!unitNumber) {
+      return res.status(400).json({ message: "Unit Number is reuired" });
+    }
+
+    if (!society) {
+      return res.status(400).json({ message: "Society is reuired" });
     }
 
     if (!city) {
@@ -58,6 +59,12 @@ router.post("/addCustommer", async (req: any, res: any) => {
 
     if (!customerName) {
       return res.status(400).json({ message: "Customername is required" });
+    }
+    if (!landmark) {
+      return res.status(400).json({ message: "landmark is required" });
+    }
+    if (!street) {
+      return res.status(400).json({ message: "Street is required" });
     }
 
     if (!phoneNumber) {
@@ -121,7 +128,8 @@ router.post("/addCustommer", async (req: any, res: any) => {
       companyName,
       customerName,
       phoneNumber,
-      unitType,
+      unitNumber,
+      society,
       city,
       state,
       street,
@@ -131,36 +139,8 @@ router.post("/addCustommer", async (req: any, res: any) => {
     };
 
     if (email) {
-      
+
       Customerinfo.email = email;
-    }
-
-    if (unitType === "bunglow") {
-      if (!bunglowsNo) {
-        return res.status(400).json({ message: "Block no. required." });
-      }
-
-      if (!society) {
-        return res.status(400).json({ message: "Society name is required." });
-      }
-
-      Customerinfo.bunglowsNo = bunglowsNo;
-      Customerinfo.society = society;
-    }
-
-    if (unitType === "Appartment") {
-      if (!apartmentName) {
-        return res
-          .status(400)
-          .json({ message: "Appartment name is required." });
-      }
-
-      if (!blockNumber) {
-        return res.status(400).json({ message: "Block number is required." });
-      }
-
-      Customerinfo.apartmentName = apartmentName;
-      Customerinfo.blockNumber = blockNumber;
     }
 
     // Create New User Object
@@ -180,7 +160,7 @@ router.post("/addCustommer", async (req: any, res: any) => {
 
 // Customer list
 
-router.get("/customerList", authMiddleware , async (req: any, res: any) => {
+router.get("/customerList", authMiddleware, async (req: any, res: any) => {
   try {
     const { id } = req.query;
     // Fetch all customers
@@ -235,10 +215,6 @@ router.post("/updateCustomer", async (req: any, res: any) => {
       email,
       gstNumber,
       unitType,
-      bunglowsNo,
-      apartmentName,
-      blockNumber,
-      society,
       landmark,
       street,
       city,
@@ -251,7 +227,7 @@ router.post("/updateCustomer", async (req: any, res: any) => {
 
     // Find existing customer
     const customer = await Customer.findById(customerID);
-    
+
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
@@ -294,33 +270,13 @@ router.post("/updateCustomer", async (req: any, res: any) => {
     if (companyName) customer.companyName = companyName;
     if (email) customer.email = email;
     if (gstNumber) customer.gstNumber = gstNumber;
-    if (unitType) customer.unitType = unitType;
     if (street) customer.street = street;
     if (landmark) customer.landmark = landmark;
     if (city) customer.city = city;
     if (state) customer.state = state;
 
-    if (unitType === "bunglow") {
-      if (!bunglowsNo) {
-        return res.status(400).json({ message: "Bunglow number is required" });
-      }
-      if (!society) {
-        return res.status(400).json({ message: "Society name is required" });
-      }
-      customer.bunglowsNo = bunglowsNo;
-      customer.society = society;
-    }
 
-    if (unitType === "Appartment") {
-      if (!apartmentName) {
-        return res.status(400).json({ message: "Apartment name is required" });
-      }
-      if (!blockNumber) {
-        return res.status(400).json({ message: "Block number is required" });
-      }
-      customer.apartmentName = apartmentName;
-      customer.blockNumber = blockNumber;
-    }
+
 
     // Save the updated customer
     await customer.save();

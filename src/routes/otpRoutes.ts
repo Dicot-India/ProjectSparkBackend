@@ -1,7 +1,7 @@
 import express from "express";
 import SendMail from "../utils/emailOtp.ts";
-import User from "../models/user.ts";
-import EmailVerification from "../models/emailVerification.ts";
+import User from "../models/userModel.ts";
+import EmailVerification from "../models/emailVerificationModel.ts";
 import crypto from "crypto";
 
 const router = express.Router();
