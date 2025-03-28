@@ -95,6 +95,8 @@ router.post("/signUp", async (req: any, res: any) => {
       phone,
       password: hashedPassword,
       unitType,
+      bunglowsNo,
+      apartmentName,
       city,
       state,
       street,
@@ -104,33 +106,7 @@ router.post("/signUp", async (req: any, res: any) => {
       emailVerified: false,
     };
 
-    if (unitType === "bunglow") {
-      if (!bunglowsNo) {
-        return res.status(400).json({ message: "Block no. required." });
-      }
 
-      if (!society) {
-        return res.status(400).json({ message: "Society name is required." });
-      }
-
-      userInfo.bunglowsNo = bunglowsNo;
-      userInfo.society = society;
-    }
-
-    if (unitType === "Appartment") {
-      if (!apartmentName) {
-        return res
-          .status(400)
-          .json({ message: "Appartment name is required." });
-      }
-
-      if (!blockNumber) {
-        return res.status(400).json({ message: "Block number is required." });
-      }
-
-      userInfo.apartmentName = apartmentName;
-      userInfo.blockNumber = blockNumber;
-    }
 
     //mail validation
     if (email && !isValidEmail(email)) {
@@ -141,7 +117,7 @@ router.post("/signUp", async (req: any, res: any) => {
 
 
     if (existingEmail) {
-      if(existingEmail.email){
+      if (existingEmail.email) {
         return res
           .status(400)
           .json({ message: "User with this Email already exists." });
