@@ -37,26 +37,6 @@ const customerSchema = new mongoose.Schema({
     unique: true,
   },
 
-  unitType: {
-    type: String,
-    required: false,
-  },
-
-  bunglowsNo: {
-    type: String,
-    required: false,
-  },
-
-  apartmentName: {
-    type: String,
-    required: false,
-  },
-
-  blockNumber: {
-    type: String,
-    required: false,
-  },
-
   society: {
     type: String,
     required: false,
@@ -85,6 +65,11 @@ const customerSchema = new mongoose.Schema({
   verified: {
     type: Boolean,
     default: false,
+  },
+
+  unitNumber: {
+    type: String,
+    required: true,
   },
 
   newsPapers: [
