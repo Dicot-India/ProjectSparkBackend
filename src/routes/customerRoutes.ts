@@ -135,7 +135,6 @@ router.post("/addCustommer", async (req: any, res: any) => {
       street,
       landmark,
       gstNumber,
-      newsPapers: [],
     };
 
     if (email) {
@@ -148,10 +147,11 @@ router.post("/addCustommer", async (req: any, res: any) => {
     // 4️⃣ Save to Database
     await newCustomer.save();
 
-    // 5️⃣ Return Success Response
-    return res
-      .status(201)
-      .json({ message: "User registered successfully!", user: newCustomer });
+    // Return Success Response with _id
+    return res.status(201).json({
+      message: "User registered successfully!",
+      user: { ...newCustomer.toObject(), _id: newCustomer._id },
+    });
   } catch (error) {
     return res.status(500).json({ message: "Server error", error });
   }
@@ -213,7 +213,8 @@ router.post("/updateCustomer", async (req: any, res: any) => {
       companyName,
       email,
       gstNumber,
-      unitType,
+      unitNumber,
+      society,
       landmark,
       street,
       city,
@@ -222,6 +223,50 @@ router.post("/updateCustomer", async (req: any, res: any) => {
 
     if (!customerID) {
       return res.status(400).json({ message: "Customer ID is required" });
+    }
+
+    if (!customerName) {
+      return res.status(400).json({ message: "Customer Name is required" });
+    }
+
+    if (!phoneNumber) {
+      return res.status(400).json({ message: "Phone Number is required" });
+    }
+
+    if (!companyName) {
+      return res.status(400).json({ message: "Company Name is required" });
+    }
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    if (!gstNumber) {
+      return res.status(400).json({ message: "GST Number is required" });
+    }
+
+    if (!unitNumber) {
+      return res.status(400).json({ message: "Unit Number is required" });
+    }
+
+    if (!society) {
+      return res.status(400).json({ message: "Society is required" });
+    }
+
+    if (!landmark) {
+      return res.status(400).json({ message: "Landmark is required" });
+    }
+
+    if (!street) {
+      return res.status(400).json({ message: "Street is required" });
+    }
+
+    if (!city) {
+      return res.status(400).json({ message: "City is required" });
+    }
+
+    if (!state) {
+      return res.status(400).json({ message: "State is required" });
     }
 
     // Find existing customer
@@ -274,9 +319,6 @@ router.post("/updateCustomer", async (req: any, res: any) => {
     if (city) customer.city = city;
     if (state) customer.state = state;
 
-
-
-
     // Save the updated customer
     await customer.save();
 
@@ -288,6 +330,33 @@ router.post("/updateCustomer", async (req: any, res: any) => {
     return res.status(500).json({ message: "Server error", error });
   }
 });
+
+router.post("/customerDetail", async (req: any, res: any) => {
+  const { phoneNumber } = req.body;
+
+  if (!phoneNumber) {
+    return res.status(400).send({ message: "Phone number is required" });
+  }
+
+  if (!isValidPhoneNumber(phoneNumber)) {
+    return res.status(400).json({ message: "Invalid phone number ❌" });
+  }
+
+  const customer = await Customer.findOne({ phoneNumber });
+
+  if (!customer) {
+    return res.status(400).send({ message: "User not found" });
+  }
+
+  return res.status(200).send({
+    message: "Customer details retrieve successfully",
+    customer: customer,
+  });
+});
+
+// router.post("/addNewspaper" , async (req: any , res : any) => {
+//   const 
+// })
 
 router.get("/plans", async (req: any, res: any) => {
   try {
