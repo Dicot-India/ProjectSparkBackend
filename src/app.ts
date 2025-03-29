@@ -6,6 +6,7 @@ import authRoutes from "./routes/authroutes.ts";
 import otpRoutes from "./routes/otpRoutes.ts";
 import dotenv from "dotenv";
 import customerRoutes from "./routes/customerRoutes.ts";
+import payRoutes from "./routes/payment.ts"
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ connectDB();
 app.use("/auth", authRoutes);
 app.use("/otp", otpRoutes);
 app.use("/customer", customerRoutes);
+app.use("/pay", payRoutes);
 
 app.listen(8000, () => {
   console.log("server is running");

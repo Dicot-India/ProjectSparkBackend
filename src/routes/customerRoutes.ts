@@ -2,7 +2,7 @@ import express, { response } from "express";
 import Customer from "../models/customer.ts"; // Ensure correct path
 import User from "../models/user.ts";
 import authMiddleware from "../middlewares/authMiddleware.ts";
-//import { Message } from "twilio/lib/twiml/MessagingResponse.js";
+import NewspaperPlans from "../models/newspaperPlan.ts";
 
 const router = express.Router();
 
@@ -131,7 +131,6 @@ router.post("/addCustommer", async (req: any, res: any) => {
     };
 
     if (email) {
-      
       Customerinfo.email = email;
     }
 
@@ -180,7 +179,7 @@ router.post("/addCustommer", async (req: any, res: any) => {
 
 // Customer list
 
-router.get("/customerList", authMiddleware , async (req: any, res: any) => {
+router.get("/customerList", authMiddleware, async (req: any, res: any) => {
   try {
     const { id } = req.query;
     // Fetch all customers
@@ -251,7 +250,7 @@ router.post("/updateCustomer", async (req: any, res: any) => {
 
     // Find existing customer
     const customer = await Customer.findById(customerID);
-    
+
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
@@ -331,6 +330,18 @@ router.post("/updateCustomer", async (req: any, res: any) => {
   } catch (error) {
     console.error("Error updating customer:", error);
     return res.status(500).json({ message: "Server error", error });
+  }
+});
+
+router.get("/plans", async (req: any, res: any) => {
+  try {
+    const plans = await NewspaperPlans.find({});
+
+    return res
+      .status(200)
+      .send({ message: "Plans retrieve successfully", data: plans });
+  } catch (error) {
+    return res.status(500).send({ message: "Internal Server Error" });
   }
 });
 

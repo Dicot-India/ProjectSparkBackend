@@ -20,7 +20,6 @@ async function refreshAccessToken(
         });
 
         const data = await response.json();
-        console.log(data);
 
         return data?.access_token; // Return the new access token
     } catch (error) {
@@ -69,7 +68,6 @@ const SendMail = async (toEmail: string, content: any) => {
         );
 
         const responseBody = await response.json();
-        console.log(responseBody);
         if (responseBody?.status?.code === 200) {
             code = responseBody?.status?.code;
             return code;

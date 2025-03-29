@@ -183,7 +183,7 @@ router.post("/signin", async (req: any, res: any) => {
   if (user.email) {
     if (!user.emailVerified) {
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      const verificationURL = `http://localhost:3000/otp/verifyEmail?token=${verificationToken}`;
+      const verificationURL = `http://localhost:8000/otp/verifyEmail?token=${verificationToken}`;
 
       const emailBody = {
         subject: "Email Verification",
@@ -208,7 +208,7 @@ router.post("/signin", async (req: any, res: any) => {
       } else {
         return res.status(400).send({ message: "First verify email" });
       }
-    } 
+    }
   }
 
   const isMatch = await bcrypt.compare(password, user.password);
@@ -223,7 +223,7 @@ router.post("/signin", async (req: any, res: any) => {
     { expiresIn: "1h" }
   );
 
-  console.log("user:" , user)
+  console.log("user:", user);
   return res.status(200).json({
     message: "Login successful ✅",
     user: {
@@ -234,6 +234,92 @@ router.post("/signin", async (req: any, res: any) => {
       token: token,
     },
   });
+});
+
+router.post("/forgotPassword", async (req: any, res: any) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).send({ message: "Email is required" });
+  }
+
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  const verificationURL = `http://localhost:3000/resetpassword?token=${verificationToken}`;
+
+  const emailBody = {
+    subject: "Reset Password",
+    body: `Click the link below to reset your password:\n\n${verificationURL}\n\nThis link will expire in 1 hour.`,
+  };
+
+  const sendMailRes = await SendMail(email, emailBody);
+
+  if (sendMailRes && sendMailRes === 200) {
+    await EmailVerification.deleteOne({ email: email });
+
+    const newEmailVerification = new EmailVerification({
+      email: email,
+      token: verificationToken,
+    });
+
+    await newEmailVerification.save();
+  } else {
+    return res
+      .status(400)
+      .send({ message: "Somethin went wrong while send email" });
+  }
+});
+
+router.get("/resetPassword", async (req: any, res: any) => {
+  const { phone, password, confirmedPaswword, token } = req.body;
+
+  if (!phone) {
+    return res.status(400).send({ message: "Phone number is required" });
+  }
+
+  if (!password) {
+    return res.status(400).send({ message: "Password is required" });
+  }
+
+  if (!isValidPassword(password)) {
+    return res.status(400).send({
+      message:
+        "Password must be at least 7 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).",
+    });
+  }
+
+  if (!confirmedPaswword) {
+    return res.status(400).send({ message: "Confirmed paswword is required" });
+  }
+
+  if (!token) {
+    return res.status(400).send({ message: "Invalid or expired token" });
+  }
+
+  const tokenInfo = await EmailVerification.findOne({ token });
+
+  if (!tokenInfo) {
+    return res.status(400).send({ message: "Invalid or expired token" });
+  }
+
+  const user = await User.findOne({ phone });
+
+  if (!user) {
+    return res
+      .status(400)
+      .send({ message: "Account does not exist with given number" });
+  }
+
+  if (password !== confirmedPaswword) {
+    return res.status(400).send({ message: "Password did not match" });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  user.password = hashedPassword;
+
+  await user.save();
+
+  return res.status(200).send({ message: "Password rest successfully" });
 });
 
 export default router;

@@ -24,7 +24,7 @@ router.get("/sendVerificationMail", async (req: any, res: any) => {
 
     // Generate a verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
-    const verificationURL = `http://localhost:3000/otp/verifyEmail?token=${verificationToken}`;
+    const verificationURL = `http://localhost:8000/otp/verifyEmail?token=${verificationToken}`;
 
     const emailBody = {
       subject: "Email Verification",
