@@ -9,7 +9,6 @@ const UserSchema = new mongoose.Schema({
 
   email: {
     type: String,
-    unique: true,
   },
   password : {
     type : String,
@@ -27,29 +26,14 @@ const UserSchema = new mongoose.Schema({
     required: true,
   },
 
-  unitType: {
+  unitNumber: {
     type: String,
     required: true,
   },
 
-  bunglowsNo: {
-    type: String,
-    required: false,
-  },
-
-  apartmentName: {
-    type: String,
-    required: false,
-  },
-
   society: {
     type: String,
-    required: false,
-  },
-
-  blockNumber: {
-    type: String,
-    required: false,
+    required: true,
   },
 
   landmark: {

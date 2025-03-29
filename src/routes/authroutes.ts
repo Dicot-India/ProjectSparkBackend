@@ -34,10 +34,7 @@ router.post("/signUp", async (req: any, res: any) => {
       email,
       gstNumber,
       companyName,
-      unitType,
-      bunglowsNo,
-      apartmentName,
-      blockNumber,
+      unitNumber,
       society,
       landmark,
       street,
@@ -46,7 +43,15 @@ router.post("/signUp", async (req: any, res: any) => {
     } = req.body;
 
     // 1️⃣ Validate Input
-    if (!gstNumber || !companyName || !unitType || !city || !state) {
+    if (
+      !gstNumber ||
+      !companyName ||
+      !unitNumber ||
+      !city ||
+      !state ||
+      !street ||
+      !society
+    ) {
       return res
         .status(400)
         .json({ message: "Please fill all required fields." });
@@ -66,7 +71,7 @@ router.post("/signUp", async (req: any, res: any) => {
     const existingNumber = await User.findOne({ phone });
     const existingEmail = await User.findOne({ email });
 
-    console.log("existingEmail:", existingEmail)
+    console.log("existingEmail:", existingEmail);
 
     if (existingUser) {
       return res
@@ -79,7 +84,6 @@ router.post("/signUp", async (req: any, res: any) => {
         .status(400)
         .json({ message: "User with this phone Number already exists." });
     }
-
 
     if (!isValidPassword(password)) {
       return res.status(400).send({
@@ -94,9 +98,8 @@ router.post("/signUp", async (req: any, res: any) => {
       companyName,
       phone,
       password: hashedPassword,
-      unitType,
-      bunglowsNo,
-      apartmentName,
+      unitNumber,
+      society,
       city,
       state,
       street,
@@ -112,7 +115,6 @@ router.post("/signUp", async (req: any, res: any) => {
     } else {
       userInfo.email = email;
     }
-
 
     if (existingEmail) {
       if (existingEmail.email) {
@@ -188,7 +190,6 @@ router.post("/signin", async (req: any, res: any) => {
       } else {
         return res.status(400).send({ message: "First verify email" });
       }
-    
     }
   }
 
@@ -204,7 +205,7 @@ router.post("/signin", async (req: any, res: any) => {
     { expiresIn: "1d" }
   );
 
-  console.log("user:", user)
+  console.log("user:", user);
   return res.status(200).json({
     message: "Login successful ✅",
     user: {

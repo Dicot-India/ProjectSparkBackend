@@ -68,6 +68,7 @@ const SendMail = async (toEmail: string, content: any) => {
         );
 
         const responseBody = await response.json();
+        console.log(responseBody);
         if (responseBody?.status?.code === 200) {
             code = responseBody?.status?.code;
             return code;
