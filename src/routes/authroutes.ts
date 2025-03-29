@@ -106,8 +106,6 @@ router.post("/signUp", async (req: any, res: any) => {
       emailVerified: false,
     };
 
-
-
     //mail validation
     if (email && !isValidEmail(email)) {
       return res.status(400).json({ message: "Invalid email format ❌" });
@@ -203,7 +201,7 @@ router.post("/signin", async (req: any, res: any) => {
   const token = jwt.sign(
     { userId: user._id, email: user.email },
     process.env.JWT_SECRET || "test",
-    { expiresIn: "1h" }
+    { expiresIn: "1d" }
   );
 
   console.log("user:", user)

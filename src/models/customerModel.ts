@@ -76,16 +76,16 @@ const customerSchema = new mongoose.Schema({
     {
       newspaperID: {
         type: String,
+        required: false,
+        sparse: true,
       },
 
       newspaperName: {
         type: String,
-        required: false,
       },
 
       publisher: {
         type: String,
-        unique: false,
       },
 
       price: {
