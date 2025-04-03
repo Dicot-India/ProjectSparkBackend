@@ -84,12 +84,16 @@ const customerSchema = new mongoose.Schema({
         type: String,
       },
 
-      publisher: {
-        type: String,
-      },
-
       price: {
         type: Number,
+      },
+
+      paymentDate: {
+        type: Date,
+      },
+
+      dueDate: {
+        type: Date,
       },
     },
   ],

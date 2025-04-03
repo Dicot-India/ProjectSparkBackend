@@ -18,7 +18,7 @@ async function refreshAccessToken(
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: params,
         });
-
+        console.log(response);
         const data = await response.json();
 
         return data?.access_token; // Return the new access token

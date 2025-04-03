@@ -71,7 +71,6 @@ router.post("/signUp", async (req: any, res: any) => {
     const existingNumber = await User.findOne({ phone });
     const existingEmail = await User.findOne({ email });
 
-    console.log("existingEmail:", existingEmail);
 
     if (existingUser) {
       return res
@@ -124,7 +123,6 @@ router.post("/signUp", async (req: any, res: any) => {
       }
     }
 
-    console.log("userInfo:", userInfo);
 
     // 3️⃣ Create New User Object
     const newUser = new User(userInfo);
@@ -205,7 +203,6 @@ router.post("/signin", async (req: any, res: any) => {
     { expiresIn: "1d" }
   );
 
-  console.log("user:", user);
   return res.status(200).json({
     message: "Login successful ✅",
     user: {

@@ -3,6 +3,7 @@ import Customer from "../models/customerModel.ts"; // Ensure correct path
 import User from "../models/userModel.ts";
 import authMiddleware from "../middlewares/authMiddleware.ts";
 import NewspaperPlans from "../models/newspaperPlan.ts";
+import checkAlreadySubscribePaper from "../middlewares/checkAlreadySubscribePaper.ts";
 
 const router = express.Router();
 
@@ -355,7 +356,7 @@ router.post("/customerDetail", async (req: any, res: any) => {
 });
 
 // router.post("/addNewspaper" , async (req: any , res : any) => {
-//   const 
+//   const
 // })
 
 router.get("/plans", async (req: any, res: any) => {
@@ -369,5 +370,70 @@ router.get("/plans", async (req: any, res: any) => {
     return res.status(500).send({ message: "Internal Server Error" });
   }
 });
+
+router.post(
+  "/addnewspaper",
+  checkAlreadySubscribePaper,
+  async (req: any, res: any) => {
+    const { customerID, newspapers } = req.body;
+
+    if (!customerID) {
+      return res.status(400).send({ message: "Customer Id is required" });
+    }
+
+    if (!Array.isArray(newspapers) || newspapers.length < 1) {
+      return res.status(400).send({ message: "Newspapers is required" });
+    }
+
+    const customer = await Customer.findOne({ _id: customerID });
+
+    if (!customer) {
+      return res.status(400).send({ message: "Customer not found" });
+    }
+
+    await Promise.all(
+      newspapers.map(async (paper: any) => {
+        if (paper.newspaperID) {
+          const plan = await NewspaperPlans.findOne({
+            newspaperID: paper.newspaperID,
+          });
+
+          if (plan) {
+            const dueDate = new Date();
+
+            dueDate.setTime(
+              dueDate.getTime() + paper.numberOfDays * 24 * 60 * 60 * 1000
+            );
+
+            const newsPaperObj = {
+              newspaperID: plan.newspaperID,
+              newspaperName: plan.newspaper,
+              price:
+                paper.numberOfDays === 28
+                  ? plan.monthlyPrice
+                  : plan.yearlyPrice,
+              paymentDate: new Date(),
+              dueDate,
+            };
+
+            customer.newsPapers.push(newsPaperObj);
+          } else {
+            return res.status(400).send({
+              message: "No plan found related to provided newspaper id",
+            });
+          }
+        } else {
+          return res.status(400).send({ message: "Newspaper Id is required" });
+        }
+      })
+    );
+
+    await customer.save();
+
+    return res
+      .status(200)
+      .send({ message: "Newspaper subscribe successfully" });
+  }
+);
 
 export default router;

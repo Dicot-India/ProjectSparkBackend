@@ -11,18 +11,13 @@ const paymentLogSchema = new mongoose.Schema({
     required: true,
   },
 
-  planID: {
-    type: String,
-    required: true,
-  },
-
   paymentMethod: {
     type: String,
     required: true,
   },
 
   paymentDate: {
-    type: String,
+    type: Date,
     required: true,
   },
 
@@ -34,13 +29,7 @@ const paymentLogSchema = new mongoose.Schema({
   orderID: {
     type: String,
     require: true,
-  },
-
-  expired: {
-    type: Boolean,
-    required: true,
-    default: false,
-  },
+  }
 });
 
 const paymentLogs = mongoose.model("paymentlogs", paymentLogSchema);

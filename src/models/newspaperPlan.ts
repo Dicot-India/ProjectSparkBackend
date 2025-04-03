@@ -9,7 +9,11 @@ const newspaperSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  price: {
+  monthlyPrice: {
+    type: Number,
+    required: true,
+  },
+  yearlyPrice: {
     type: Number,
     required: true,
   },
