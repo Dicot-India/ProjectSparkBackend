@@ -234,17 +234,12 @@ router.post("/updateCustomer", async (req: any, res: any) => {
       return res.status(400).json({ message: "Phone Number is required" });
     }
 
-    if (!companyName) {
-      return res.status(400).json({ message: "Company Name is required" });
-    }
+
 
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    if (!gstNumber) {
-      return res.status(400).json({ message: "GST Number is required" });
-    }
 
     if (!unitNumber) {
       return res.status(400).json({ message: "Unit Number is required" });
