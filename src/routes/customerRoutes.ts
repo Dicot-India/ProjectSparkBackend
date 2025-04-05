@@ -1,9 +1,15 @@
-import express, { response } from "express";
+import express from "express";
 import Customer from "../models/customerModel.ts"; // Ensure correct path
 import User from "../models/userModel.ts";
 import authMiddleware from "../middlewares/authMiddleware.ts";
 import NewspaperPlans from "../models/newspaperPlan.ts";
 import checkAlreadySubscribePaper from "../middlewares/checkAlreadySubscribePaper.ts";
+import multer from "multer";
+import xlsx from "xlsx";
+import { DatabaseSync } from "node:sqlite";
+import mongoose from "mongoose";
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
@@ -234,12 +240,9 @@ router.post("/updateCustomer", async (req: any, res: any) => {
       return res.status(400).json({ message: "Phone Number is required" });
     }
 
-
-
     if (!email) {
       return res.status(400).json({ message: "Email is required" });
     }
-
 
     if (!unitNumber) {
       return res.status(400).json({ message: "Unit Number is required" });
@@ -428,6 +431,87 @@ router.post(
     return res
       .status(200)
       .send({ message: "Newspaper subscribe successfully" });
+  }
+);
+
+router.post(
+  "/addCustomers",
+  upload.single("file"),
+  async (req: any, res: any) => {
+    try {
+      const { userID } = req.body;
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Validate userID
+      if (!userID) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(userID)) {
+        return res.status(400).json({ message: "Invalid User ID format" });
+      }
+
+      // Fetch user by ID
+      const user = await User.findById(userID);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Read the uploaded Excel file
+      const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+      const sheetName = workbook.SheetNames[0];
+      let data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        defval: "", // Ensures empty cells are treated as empty strings
+      });
+
+      // ✅ Trim column headers to remove extra spaces
+      const formattedData = data.map((row: any) => {
+        const trimmedRow: any = {};
+        Object.keys(row).forEach((key) => {
+          trimmedRow[key.trim()] = row[key]; // Trim key names
+        });
+        return trimmedRow;
+      });
+
+      // Extract phone numbers from the new customers
+      const newPhoneNumbers = formattedData.map(
+        (customer) => customer.phoneNumber
+      );
+
+      // ✅ Check if any phone number already exists
+      const existingCustomers = await Customer.find({
+        phoneNumber: { $in: newPhoneNumbers },
+      });
+
+      if (existingCustomers.length > 0) {
+        return res.status(400).json({
+          message: "Some phone numbers already exist",
+          duplicatePhoneNumbers: existingCustomers.map((c) => c.phoneNumber),
+        });
+      }
+
+      // ✅ Add user ID to each new customer
+      const newCustomers = formattedData.map((customer) => ({
+        ...customer,
+        id: userID, // Associate with the user
+      }));
+
+      // ✅ Insert new customers
+      const savedCustomers = await Customer.insertMany(newCustomers);
+
+      return res
+        .status(200)
+        .json({
+          message: "Successfully Added Customers",
+          data: savedCustomers,
+        });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ message: "Internal Server Error", error });
+    }
   }
 );
 
