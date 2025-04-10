@@ -8,6 +8,7 @@ import multer from "multer";
 import xlsx from "xlsx";
 import { DatabaseSync } from "node:sqlite";
 import mongoose from "mongoose";
+import removeExpirePlan from "../middlewares/removeExpirePlan.ts";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -330,7 +331,7 @@ router.post("/updateCustomer", async (req: any, res: any) => {
   }
 });
 
-router.post("/customerDetail", async (req: any, res: any) => {
+router.post("/customerDetail", removeExpirePlan, async (req: any, res: any) => {
   const { phoneNumber } = req.body;
 
   if (!phoneNumber) {
@@ -347,9 +348,16 @@ router.post("/customerDetail", async (req: any, res: any) => {
     return res.status(400).send({ message: "User not found" });
   }
 
+  const vendor = await User.findById(customer.id);
+
+  if(!vendor){
+    return res.status(400).send({messgae : "User not found"})
+  }
+
   return res.status(200).send({
     message: "Customer details retrieve successfully",
     customer: customer,
+    email : vendor.email ? vendor.email : ""
   });
 });
 
@@ -389,42 +397,36 @@ router.post(
       return res.status(400).send({ message: "Customer not found" });
     }
 
-    await Promise.all(
-      newspapers.map(async (paper: any) => {
-        if (paper.newspaperID) {
-          const plan = await NewspaperPlans.findOne({
-            newspaperID: paper.newspaperID,
-          });
+    for (const paper of newspapers) {
+      if (!paper.newspaperID) {
+        return res.status(400).send({ message: "Newspaper Id is required" });
+      }
 
-          if (plan) {
-            const dueDate = new Date();
+      const plan = await NewspaperPlans.findOne({
+        newspaperID: paper.newspaperID,
+      });
 
-            dueDate.setTime(
-              dueDate.getTime() + paper.numberOfDays * 24 * 60 * 60 * 1000
-            );
+      if (!plan) {
+        return res.status(400).send({
+          message: "No plan found related to provided newspaper id",
+        });
+      }
 
-            const newsPaperObj = {
-              newspaperID: plan.newspaperID,
-              newspaperName: plan.newspaper,
-              price:
-                paper.numberOfDays === 28
-                  ? plan.monthlyPrice
-                  : plan.yearlyPrice,
-              paymentDate: new Date(),
-              dueDate,
-            };
+      const dueDate = new Date();
+      dueDate.setTime(
+        dueDate.getTime() + paper.numberOfDays * 24 * 60 * 60 * 1000
+      );
 
-            customer.newsPapers.push(newsPaperObj);
-          } else {
-            return res.status(400).send({
-              message: "No plan found related to provided newspaper id",
-            });
-          }
-        } else {
-          return res.status(400).send({ message: "Newspaper Id is required" });
-        }
-      })
-    );
+      const newsPaperObj = {
+        newspaperID: plan.newspaperID,
+        newspaperName: plan.newspaper,
+        price: paper.numberOfDays === 28 ? plan.monthlyPrice : plan.yearlyPrice,
+        paymentDate: new Date(),
+        dueDate,
+      };
+
+      customer.newsPapers.push(newsPaperObj);
+    }
 
     await customer.save();
 
@@ -502,12 +504,10 @@ router.post(
       // ✅ Insert new customers
       const savedCustomers = await Customer.insertMany(newCustomers);
 
-      return res
-        .status(200)
-        .json({
-          message: "Successfully Added Customers",
-          data: savedCustomers,
-        });
+      return res.status(200).json({
+        message: "Successfully Added Customers",
+        data: savedCustomers,
+      });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Internal Server Error", error });
