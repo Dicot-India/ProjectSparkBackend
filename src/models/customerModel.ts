@@ -67,9 +67,18 @@ const customerSchema = new mongoose.Schema({
     default: false,
   },
 
+  isPause: {
+    type: Boolean,
+    default: false,
+  },
+
   unitNumber: {
     type: String,
     required: true,
+  },
+
+  pauseDate: {
+    type: Date,
   },
 
   newsPapers: [
@@ -94,7 +103,7 @@ const customerSchema = new mongoose.Schema({
 
       dueDate: {
         type: Date,
-      },
+      }
     },
   ],
 });
