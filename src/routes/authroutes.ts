@@ -71,7 +71,6 @@ router.post("/signUp", async (req: any, res: any) => {
     const existingNumber = await User.findOne({ phone });
     const existingEmail = await User.findOne({ email });
 
-
     if (existingUser) {
       return res
         .status(400)
@@ -122,7 +121,6 @@ router.post("/signUp", async (req: any, res: any) => {
           .json({ message: "User with this Email already exists." });
       }
     }
-
 
     // 3️⃣ Create New User Object
     const newUser = new User(userInfo);
@@ -190,7 +188,6 @@ router.post("/signin", async (req: any, res: any) => {
       }
     }
   }
-console.log (password,user.password);
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
     return res.status(400).json({ message: "Invalid credentials" });

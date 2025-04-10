@@ -5,6 +5,7 @@ import NewspaperPlans from "../models/newspaperPlan.ts";
 import Customer from "../models/customerModel.ts";
 import PaymentLogs from "../models/paymentLogs.ts";
 import checkAlreadySubscribePaper from "../middlewares/checkAlreadySubscribePaper.ts";
+import SendMail from "../utils/emailOtp.ts";
 
 const router = express.Router();
 
@@ -47,7 +48,7 @@ router.post(
 
 router.post("/verify", async (req: any, res: any) => {
   try {
-    const { newspapers, phone, orderID, paymentID, razorpaySignature } =
+    const { newspapers, phone, orderID, paymentID, razorpaySignature , email } =
       req.body;
 
     if (!Array.isArray(newspapers) || newspapers.length < 1) {
@@ -146,11 +147,20 @@ router.post("/verify", async (req: any, res: any) => {
       orderID: paymentResponse.order_id,
     });
 
+
     //Save payment information
     await paymentInfo.save();
 
     // Save customer
     await customer.save();
+
+    if(email){
+      const emailContent = {
+        subject : "Customer Payment Information",
+
+      }
+      // await SendMail(email)
+    }
 
     return res.status(200).json({ message: "Payment completed" });
   } catch (error) {
