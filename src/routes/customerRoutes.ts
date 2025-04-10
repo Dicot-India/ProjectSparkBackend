@@ -8,6 +8,7 @@ import multer from "multer";
 import xlsx from "xlsx";
 import { DatabaseSync } from "node:sqlite";
 import mongoose from "mongoose";
+import newspaperPlans from "../models/newspaperPlan.ts";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -466,19 +467,62 @@ router.post(
       let data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
         defval: "", // Ensures empty cells are treated as empty strings
       });
+      const formattedData = [];
 
-      // ✅ Trim column headers to remove extra spaces
-      const formattedData = data.map((row: any) => {
+      for (const row of data as any[]) {
         const trimmedRow: any = {};
         Object.keys(row).forEach((key) => {
-          trimmedRow[key.trim()] = row[key]; // Trim key names
+          const trimmedKey = key.trim();
+          trimmedRow[trimmedKey] = row[key];
         });
-        return trimmedRow;
-      });
+
+        const newspaperToAdd: any[] = [];
+
+        if (trimmedRow.newsPapers && trimmedRow.duration) {
+          const splitedArr = trimmedRow.newsPapers.split(",");
+
+          for (const paper of splitedArr) {
+            const trimmedPaper = paper.trim();
+
+            const plan = await newspaperPlans.findOne({
+              newspaperID: trimmedPaper.charAt(0), // or use actual ID logic
+            });
+
+            if (!plan) {
+              return res
+                .status(400)
+                .send({ message: "No plan available for one of the newspapers" });
+            }
+
+            newspaperToAdd.push({
+              newspaperName: trimmedPaper,
+              newspaperID: trimmedPaper.charAt(0),
+              paymentDate: new Date(),
+              price: trimmedRow.duration === "month" ? plan.monthlyPrice : plan.yearlyPrice,
+              dueDate: trimmedRow.duration === "month" ? 30 * 24 * 60 * 60 * 1000 : 365 * 24 * 60 * 60 * 1000, // due in 30 days
+            });
+          }
+
+          trimmedRow.newsPapers = newspaperToAdd;
+        }
+
+        formattedData.push(trimmedRow);
+      }
+
+
+
+
+
+
 
       // Extract phone numbers from the new customers
+
+      function isValidPhoneNumber(phone: string): boolean {
+        const phoneRegex = /^[6-9]\d{9}$/;
+        return phoneRegex.test(phone);
+      }
       const newPhoneNumbers = formattedData.map(
-        (customer) => customer.phoneNumber
+        (customer: any) => customer.phoneNumber
       );
 
       // ✅ Check if any phone number already exists
@@ -493,8 +537,10 @@ router.post(
         });
       }
 
+
+
       // ✅ Add user ID to each new customer
-      const newCustomers = formattedData.map((customer) => ({
+      const newCustomers = formattedData.map((customer: any) => ({
         ...customer,
         id: userID, // Associate with the user
       }));
