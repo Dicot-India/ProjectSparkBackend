@@ -98,4 +98,39 @@ router.post("/continue", async (req: any, res: any) => {
   });
 });
 
+router.post("/setPaidStatus", async (req: any, res: any) => {
+  const { customerID } = req.body;
+
+  if (!customerID) {
+    return res.status(400).send({
+      message: "Customer ID is Required",
+    });
+  }
+
+  const customer = await Customer.findById(customerID);
+
+  if (!customer) {
+    return res.status(400).send({
+      message: "Customer not found",
+    });
+  }
+
+  if (customer.newsPapers.length > 0) {
+    customer.newsPapers.forEach((paper) => {
+      paper.paid = !paper.paid;
+    });
+  } else {
+    return res.status(400).send({
+      message: "Customer have not subscribe any of newspaper",
+    });
+  }
+
+  await customer.save();
+
+  return res.status(200).send({
+    message: `Updated customer paid status`,
+    customer,
+  });
+});
+
 export default router;

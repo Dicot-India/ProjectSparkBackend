@@ -20,7 +20,9 @@ const checkAlreadySubscribePaper = async (req: any, res: any, next: any) => {
 
     for (const paper of newspapers) {
       const alreadySubscribed = customer.newsPapers.some(
-        (subscribed) => subscribed.newspaperID === paper.newspaperID
+        (subscribed) =>
+          subscribed.newspaperID === paper.newspaperID &&
+          subscribed.price === paper.price
       );
 
       if (alreadySubscribed) {

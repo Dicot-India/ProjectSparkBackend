@@ -101,9 +101,18 @@ const customerSchema = new mongoose.Schema({
         type: Date,
       },
 
+      duration : {
+        type : String
+      },
+
       dueDate: {
         type: Date,
-      }
+      },
+
+      paid: {
+        type: Boolean,
+        default: false,
+      },
     },
   ],
 });
