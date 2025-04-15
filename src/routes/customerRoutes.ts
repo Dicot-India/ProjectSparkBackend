@@ -350,14 +350,14 @@ router.post("/customerDetail", removeExpirePlan, async (req: any, res: any) => {
 
   const vendor = await User.findById(customer.id);
 
-  if(!vendor){
-    return res.status(400).send({messgae : "User not found"})
+  if (!vendor) {
+    return res.status(400).send({ messgae: "User not found" });
   }
 
   return res.status(200).send({
     message: "Customer details retrieve successfully",
     customer: customer,
-    email : vendor.email ? vendor.email : ""
+    email: vendor.email ? vendor.email : "",
   });
 });
 
@@ -377,64 +377,134 @@ router.get("/plans", async (req: any, res: any) => {
   }
 });
 
-router.post(
-  "/addnewspaper",
-  checkAlreadySubscribePaper,
-  async (req: any, res: any) => {
-    const { customerID, newspapers } = req.body;
+router.post("/addnewspaper", async (req: any, res: any) => {
+  const { customerID, newspapers } = req.body;
 
-    if (!customerID) {
-      return res.status(400).send({ message: "Customer Id is required" });
-    }
-
-    if (!Array.isArray(newspapers) || newspapers.length < 1) {
-      return res.status(400).send({ message: "Newspapers is required" });
-    }
-
-    const customer = await Customer.findOne({ _id: customerID });
-
-    if (!customer) {
-      return res.status(400).send({ message: "Customer not found" });
-    }
-
-    for (const paper of newspapers) {
-      if (!paper.newspaperID) {
-        return res.status(400).send({ message: "Newspaper Id is required" });
-      }
-
-      const plan = await NewspaperPlans.findOne({
-        newspaperID: paper.newspaperID,
-      });
-
-      if (!plan) {
-        return res.status(400).send({
-          message: "No plan found related to provided newspaper id",
-        });
-      }
-
-      const dueDate = new Date();
-      dueDate.setTime(
-        dueDate.getTime() + paper.numberOfDays * 24 * 60 * 60 * 1000
-      );
-
-      const newsPaperObj = {
-        newspaperID: plan.newspaperID,
-        newspaperName: plan.newspaper,
-        price: paper.numberOfDays === 28 ? plan.monthlyPrice : plan.yearlyPrice,
-        paymentDate: new Date(),
-        dueDate,
-      };
-
-      customer.newsPapers.push(newsPaperObj);
-    }
-
-    await customer.save();
-
-    return res
-      .status(200)
-      .send({ message: "Newspaper subscribe successfully" });
+  if (!customerID) {
+    return res.status(400).send({ message: "Customer Id is required" });
   }
-);
+
+  if (!Array.isArray(newspapers) || newspapers.length < 1) {
+    return res.status(400).send({ message: "Newspapers is required" });
+  }
+
+  const customer = await Customer.findOne({ _id: customerID });
+
+  if (!customer) {
+    return res.status(400).send({ message: "Customer not found" });
+  }
+
+  const added = [];
+  const skipped = [];
+
+  for (const paper of newspapers) {
+    if (!paper.newspaperID) {
+      return res.status(400).send({ message: "Newspaper Id is required" });
+    }
+
+    const plan = await NewspaperPlans.findOne({
+      newspaperID: paper.newspaperID,
+    });
+
+    if (!plan) {
+      return res.status(400).send({
+        message: "No plan found related to provided newspaper id",
+      });
+    }
+
+    const priceToAdd =
+      paper.numberOfDays === 28 ? plan.monthlyPrice : plan.yearlyPrice;
+
+    const alreadySubscribed = customer.newsPapers.some(
+      (subscribed) =>
+        subscribed.newspaperID === paper.newspaperID &&
+        subscribed.price === priceToAdd
+    );
+
+    if (alreadySubscribed) {
+      skipped.push({
+        newspaperID: paper.newspaperID,
+        newspaperName: plan.newspaper,
+        price: priceToAdd,
+      });
+      continue;
+    }
+
+    const newsPaperObj = {
+      newspaperID: plan.newspaperID,
+      newspaperName: plan.newspaper,
+      price: priceToAdd,
+      duration: paper.numberOfDays === 28 ? "month" : "year",
+      paid: false,
+    };
+
+    customer.newsPapers.push(newsPaperObj);
+    added.push(newsPaperObj);
+  }
+
+  await customer.save();
+
+  let message = "";
+  if (added.length && skipped.length) {
+    message = `Some newspapers were added, and some were already subscribed.`;
+  } else if (added.length) {
+    message = `All newspapers subscribed successfully.`;
+  } else {
+    message = `All newspapers were already subscribed.`;
+  }
+
+  return res.status(200).send({
+    message,
+    customer,
+  });
+});
+
+router.post("/removepaper", async (req: any, res: any) => {
+  const { customerID, newspapers } = req.body;
+
+  if (!customerID) {
+    return res.status(400).send({ message: "customerID is required" });
+  }
+
+  if (!Array.isArray(newspapers) || newspapers.length < 1) {
+    return res.status(400).send({
+      message:
+        "An array of newspapers (with newspaperID and price) is required",
+    });
+  }
+
+  const customer = await Customer.findOne({ _id: customerID });
+
+  if (!customer) {
+    return res.status(404).send({ message: "Customer not found" });
+  }
+
+  let removedCount = 0;
+
+  for (const { newspaperID, price } of newspapers) {
+    const index = customer.newsPapers.findIndex(
+      (paper: any) => paper.newspaperID === newspaperID && paper.price === price
+    );
+
+    if (index !== -1) {
+      customer.newsPapers.splice(index, 1); // removes 1 element at the found index
+      removedCount++;
+    }
+  }
+
+  if (removedCount === 0) {
+    return res.status(400).send({
+      message: "No matching newspapers found to remove",
+    });
+  }
+
+  await customer.save();
+
+  return res.status(200).send({
+    message: `${removedCount} newspaper(s) removed successfully`,
+    customer,
+  });
+});
 
 router.post(
   "/addCustomers",
@@ -490,17 +560,25 @@ router.post(
             });
 
             if (!plan) {
-              return res
-                .status(400)
-                .send({ message: "No plan available for one of the newspapers" });
+              return res.status(400).send({
+                message: "No plan available for one of the newspapers",
+              });
             }
 
             newspaperToAdd.push({
               newspaperName: trimmedPaper,
               newspaperID: trimmedPaper.charAt(0),
-              paymentDate: new Date(),
-              price: trimmedRow.duration === "month" ? plan.monthlyPrice : plan.yearlyPrice,
-              dueDate: trimmedRow.duration === "month" ? 30 * 24 * 60 * 60 * 1000 : 365 * 24 * 60 * 60 * 1000, // due in 30 days
+              // paymentDate: new Date(),
+              price:
+                trimmedRow.duration === "month"
+                  ? plan.monthlyPrice
+                  : plan.yearlyPrice,
+              duration: trimmedRow.duration.toLowerCase(),
+              // dueDate:
+              //   trimmedRow.duration === "month"
+              //     ? 30 * 24 * 60 * 60 * 1000
+              //     : 365 * 24 * 60 * 60 * 1000, // due in 30 days
+              paid: false,
             });
           }
 
@@ -510,18 +588,13 @@ router.post(
         formattedData.push(trimmedRow);
       }
 
-
-
-
-
-
-
       // Extract phone numbers from the new customers
 
       function isValidPhoneNumber(phone: string): boolean {
         const phoneRegex = /^[6-9]\d{9}$/;
         return phoneRegex.test(phone);
       }
+
       const newPhoneNumbers = formattedData.map(
         (customer: any) => customer.phoneNumber
       );
@@ -537,8 +610,6 @@ router.post(
           duplicatePhoneNumbers: existingCustomers.map((c) => c.phoneNumber),
         });
       }
-
-
 
       // ✅ Add user ID to each new customer
       const newCustomers = formattedData.map((customer: any) => ({
