@@ -3,7 +3,6 @@ import Customer from "../models/customerModel.ts"; // Ensure correct path
 import User from "../models/userModel.ts";
 import authMiddleware from "../middlewares/authMiddleware.ts";
 import NewspaperPlans from "../models/newspaperPlan.ts";
-import checkAlreadySubscribePaper from "../middlewares/checkAlreadySubscribePaper.ts";
 import multer from "multer";
 import xlsx from "xlsx";
 import mongoose from "mongoose";
@@ -412,20 +411,20 @@ router.post("/addnewspaper", async (req: any, res: any) => {
       });
     }
 
-    const priceToAdd =
-      paper.numberOfDays === 28 ? plan.monthlyPrice : plan.yearlyPrice;
+    const dueDate = new Date();
+    dueDate.setTime(dueDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     const alreadySubscribed = customer.newsPapers.some(
       (subscribed) =>
         subscribed.newspaperID === paper.newspaperID &&
-        subscribed.price === priceToAdd
+        Number(subscribed.price) === Number(plan.price)
     );
 
     if (alreadySubscribed) {
       skipped.push({
         newspaperID: paper.newspaperID,
         newspaperName: plan.newspaper,
-        price: priceToAdd,
+        price: Number(plan.price),
       });
       continue;
     }
@@ -433,9 +432,10 @@ router.post("/addnewspaper", async (req: any, res: any) => {
     const newsPaperObj = {
       newspaperID: plan.newspaperID,
       newspaperName: plan.newspaper,
-      price: priceToAdd,
-      duration: paper.numberOfDays === 28 ? "month" : "year",
+      price: Number(plan.price),
+      paymentDate: new Date(),
       paid: false,
+      dueDate,
     };
 
     customer.newsPapers.push(newsPaperObj);
@@ -568,16 +568,9 @@ router.post(
             newspaperToAdd.push({
               newspaperName: trimmedPaper,
               newspaperID: trimmedPaper.charAt(0),
-              // paymentDate: new Date(),
-              price:
-                trimmedRow.duration === "month"
-                  ? plan.monthlyPrice
-                  : plan.yearlyPrice,
-              duration: trimmedRow.duration.toLowerCase(),
-              // dueDate:
-              //   trimmedRow.duration === "month"
-              //     ? 30 * 24 * 60 * 60 * 1000
-              //     : 365 * 24 * 60 * 60 * 1000, // due in 30 days
+              paymentDate: new Date(),
+              price: Number(plan.price),
+              dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),// due in 30 days
               paid: false,
             });
           }

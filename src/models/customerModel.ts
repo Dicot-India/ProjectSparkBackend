@@ -100,11 +100,7 @@ const customerSchema = new mongoose.Schema({
       paymentDate: {
         type: Date,
       },
-
-      duration : {
-        type : String
-      },
-
+      
       dueDate: {
         type: Date,
       },

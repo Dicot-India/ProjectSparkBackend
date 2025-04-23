@@ -1,11 +1,11 @@
 import express from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import NewspaperPlans from "../models/newspaperPlan.ts";
 import Customer from "../models/customerModel.ts";
 import PaymentLogs from "../models/paymentLogs.ts";
-import checkAlreadySubscribePaper from "../middlewares/checkAlreadySubscribePaper.ts";
 import SendMail from "../utils/emailOtp.ts";
+import SendWhatsappMsg from "../utils/SendWhatsappMsg.ts";
+import User from "../models/userModel.ts";
 
 const router = express.Router();
 
@@ -58,10 +58,18 @@ router.post("/verify", async (req: any, res: any) => {
 
     // Find customer
     const customer = await Customer.findOne({ phoneNumber: phone });
+
     if (!customer) {
       return res
         .status(404)
         .json({ message: "No user found for given number" });
+    }
+    const user = await User.findById(customer.id);
+
+    if (!user) {
+      return res.status(400).send({
+        message: "User not found",
+      });
     }
 
     // Verify payment signature
@@ -87,21 +95,13 @@ router.post("/verify", async (req: any, res: any) => {
 
     await customer.newsPapers.forEach((paper: any) => {
       const dueDate = new Date();
-      dueDate.setTime(
-        dueDate.getTime() +
-          (paper.duration === "year"
-            ? 365 * 24 * 60 * 60 * 1000
-            : 30 * 24 * 60 * 60 * 1000)
-      );
+      dueDate.setTime(dueDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
       const newsPaperObj = {
         newspaperID: paper.newspaperID,
         newspaperName: paper.newspaper,
         price: paper.price,
-        duration: paper.duration,
         paid: true,
-        paymentDate: new Date(),
-        dueDate: dueDate,
       };
 
       updatedCustomerArr.push(newsPaperObj);
@@ -124,18 +124,29 @@ router.post("/verify", async (req: any, res: any) => {
     // Save customer
     await customer.save();
 
-    if (email) {
-      const emailContent = {
-        subject: "Customer Payment Information",
-        body: `Customer Related Payment Details<br>
+    const message = `Customer Related Payment Details<br>
         Name: ${customer.customerName}<br>
         Phone number: ${paymentInfo.phone}<br>
         Address: ${customer.unitNumber} ${customer.society} ${customer.street} ${customer.landmark}<br>
         Amount: ${paymentInfo.price}
-      `,
+      `;
+
+    if (email) {
+      const emailContent = {
+        subject: "Customer Payment Information",
+        body: message,
       };
       await SendMail(email, emailContent);
     }
+
+    const whMessage =
+      `*Customer Payment Details:* ` +
+      `*Name:* ${customer.customerName} | ` +
+      `*Phone:* ${paymentInfo.phone} | ` +
+      `*Address:* ${customer.unitNumber} ${customer.society} ${customer.street} ${customer.landmark} | ` +
+      `*Amount:* ₹${paymentInfo.price}`;
+
+    await SendWhatsappMsg(user.phone, whMessage);
 
     return res.status(200).json({ message: "Payment completed" });
   } catch (error) {
