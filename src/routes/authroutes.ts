@@ -1,11 +1,13 @@
 // sign-up
-import express, { response } from "express";
+import express from "express";
 import User from "../models/userModel.ts"; // Ensure correct path
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import SendMail from "../utils/emailOtp.ts";
 import EmailVerification from "../models/emailVerificationModel.ts";
+import SendWhatsappMsg from "../utils/SendWhatsappMsg.ts";
+import PhoneOTP from "../models/phoneVerificationModel.ts";
 
 const router = express.Router();
 // phoneNumber
@@ -62,15 +64,10 @@ router.post("/signUp", async (req: any, res: any) => {
       return res.status(400).json({ message: "Invalid phone number ❌" });
     }
 
-    if (!password) {
-      return res.status(400).send({ message: "Password is required" });
-    }
-
     // 2️⃣ Check If User Already Exists
     const existingUser = await User.findOne({ gstNumber });
     const existingNumber = await User.findOne({ phone });
     const existingEmail = await User.findOne({ email });
-
 
     if (existingUser) {
       return res
@@ -84,19 +81,9 @@ router.post("/signUp", async (req: any, res: any) => {
         .json({ message: "User with this phone Number already exists." });
     }
 
-    if (!isValidPassword(password)) {
-      return res.status(400).send({
-        message:
-          "Password must be at least 7 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).",
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
     let userInfo: any = {
       companyName,
       phone,
-      password: hashedPassword,
       unitNumber,
       society,
       city,
@@ -123,45 +110,13 @@ router.post("/signUp", async (req: any, res: any) => {
       }
     }
 
-
     // 3️⃣ Create New User Object
     const newUser = new User(userInfo);
 
     // 4️⃣ Save to Database
-    await newUser.save();
 
     // 5️⃣ Return Success Response
-    return res
-      .status(201)
-      .json({ message: "User registered successfully!", user: newUser });
-  } catch (error) {
-    return res.status(500).json({ message: "Server error", error });
-  }
-});
-
-// sign-in
-
-router.post("/signin", async (req: any, res: any) => {
-  const { password, phone } = req.body;
-
-  if (!password && !phone) {
-    return res
-      .status(400)
-      .json({ message: "Email or password is required ❌" });
-  }
-
-  // Search for user by email or phone number
-
-  const user = await User.findOne({ phone });
-
-  // If user not found, return error
-
-  if (!user) {
-    return res.status(404).json({ message: "User not found ❌" });
-  }
-
-  if (user.email) {
-    if (!user.emailVerified) {
+    if (email) {
       const verificationToken = crypto.randomBytes(32).toString("hex");
       const verificationURL = `http://localhost:8000/otp/verifyEmail?token=${verificationToken}`;
 
@@ -170,135 +125,190 @@ router.post("/signin", async (req: any, res: any) => {
         body: `Click the link below to verify your email:\n\n${verificationURL}\n\nThis link will expire in 1 hour.`,
       };
 
-      const sendMailRes = await SendMail(user.email, emailBody);
+      const sendMailRes = await SendMail(email, emailBody);
 
       if (sendMailRes && sendMailRes === 200) {
-        await EmailVerification.deleteOne({ email: user.email });
+        await EmailVerification.deleteOne({ email: email });
 
         const newEmailVerification = new EmailVerification({
-          email: user.email,
+          email: email,
           token: verificationToken,
         });
 
         await newEmailVerification.save();
+
+        await newUser.save();
+
         return res.status(200).send({
-          message:
-            "Since email was not verified we have sent you email verification again",
+          message: "Signup Successfull, Please verify email before signin",
         });
       } else {
-        return res.status(400).send({ message: "First verify email" });
+        return res
+          .status(400)
+          .send({ message: "Something went wrong while send mail" });
       }
+    } else {
+      await newUser.save();
+
+      return res
+        .status(201)
+        .json({ message: "User registered successfully!", user: newUser });
     }
-  }
-console.log (password,user.password);
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    return res.status(400).json({ message: "Invalid credentials" });
-  }
-
-  // Generate JWT token
-  const token = jwt.sign(
-    { userId: user._id, email: user.email },
-    process.env.JWT_SECRET || "test",
-    { expiresIn: "1d" }
-  );
-
-  return res.status(200).json({
-    message: "Login successful ✅",
-    user: {
-      id: user._id,
-      phone: user.phone,
-      companyName: user.companyName,
-      gstNumber: user.gstNumber,
-      token: token,
-    },
-  });
-});
-
-router.post("/forgotPassword", async (req: any, res: any) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).send({ message: "Email is required" });
-  }
-
-  const verificationToken = crypto.randomBytes(32).toString("hex");
-  const verificationURL = `http://localhost:3000/resetpassword?token=${verificationToken}`;
-
-  const emailBody = {
-    subject: "Reset Password",
-    body: `Click the link below to reset your password:\n\n${verificationURL}\n\nThis link will expire in 1 hour.`,
-  };
-
-  const sendMailRes = await SendMail(email, emailBody);
-
-  if (sendMailRes && sendMailRes === 200) {
-    await EmailVerification.deleteOne({ email: email });
-
-    const newEmailVerification = new EmailVerification({
-      email: email,
-      token: verificationToken,
-    });
-
-    await newEmailVerification.save();
-  } else {
-    return res
-      .status(400)
-      .send({ message: "Somethin went wrong while send email" });
+  } catch (error) {
+    return res.status(500).json({ message: "Server error", error });
   }
 });
 
-router.get("/resetPassword", async (req: any, res: any) => {
-  const { phone, password, confirmedPaswword, token } = req.body;
+// sign-in
+router.post("/signin", async (req: any, res: any) => {
+  const { phone, OTP } = req.body;
 
-  if (!phone) {
-    return res.status(400).send({ message: "Phone number is required" });
+  if (!phone || !OTP) {
+    return res.status(400).json({ message: "Phone and OTP are required ❌" });
   }
 
-  if (!password) {
-    return res.status(400).send({ message: "Password is required" });
-  }
+  try {
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return res.status(404).json({ message: "User not found ❌" });
+    }
 
-  if (!isValidPassword(password)) {
-    return res.status(400).send({
-      message:
-        "Password must be at least 7 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).",
+    // Check if OTP is valid
+    const validOTP = await PhoneOTP.findOne({ phoneNumber: phone, OTP });
+
+    if (!validOTP) {
+      return res.status(401).json({ message: "Invalid or expired OTP ❌" });
+    }
+
+    // OTP is valid — delete it to prevent reuse
+    await PhoneOTP.deleteMany({ phoneNumber: phone });
+
+    // Optional: Email verification logic if still needed
+    // if (user.email) {
+    //   if (!user.emailVerified) {
+    //     const verificationToken = crypto.randomBytes(32).toString("hex");
+    //     const verificationURL = `http://localhost:8000/otp/verifyEmail?token=${verificationToken}`;
+
+    //     const emailBody = {
+    //       subject: "Email Verification",
+    //       body: `Click the link below to verify your email:\n\n${verificationURL}\n\nThis link will expire in 1 hour.`,
+    //     };
+
+    //     const sendMailRes = await SendMail(user.email, emailBody);
+
+    //     if (sendMailRes && sendMailRes === 200) {
+    //       await EmailVerification.deleteOne({ email: user.email });
+
+    //       const newEmailVerification = new EmailVerification({
+    //         email: user.email,
+    //         token: verificationToken,
+    //       });
+
+    //       await newEmailVerification.save();
+    //       return res.status(200).send({
+    //         message:
+    //           "Since email was not verified we have sent you email verification again",
+    //       });
+    //     } else {
+    //       return res.status(400).send({ message: "First verify email" });
+    //     }
+    //   }
+    // }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET || "test",
+      { expiresIn: "30d" }
+    );
+
+    return res.status(200).json({
+      message: "Login successful ✅",
+      user: {
+        id: user._id,
+        phone: user.phone,
+        companyName: user.companyName,
+        gstNumber: user.gstNumber,
+        token,
+      },
+    });
+  } catch (error) {
+    console.error("Signin error:", error);
+    return res.status(500).json({ message: "Internal server error ❌" });
+  }
+});
+
+router.post("/sendOTP", async (req: any, res: any) => {
+  try {
+    const { phoneNumber } = req.body;
+
+    if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({ message: "Invalid phone number ❌" });
+    }
+
+    // Optional cleanup of previous OTPs
+    await PhoneOTP.deleteMany({ phoneNumber });
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const message = `Hi there, This is OTP for login: ${otp}`;
+
+    const msgSent = await SendWhatsappMsg(phoneNumber, message);
+
+    if (!msgSent) {
+      return res.status(500).json({ message: "Failed to send OTP ❌" });
+    }
+
+    const phoneOTPObj = new PhoneOTP({
+      phoneNumber,
+      OTP: otp,
+    });
+
+    await phoneOTPObj.save();
+
+    return res.status(200).json({
+      message: "OTP sent to your phone number on WhatsApp ✅",
+    });
+  } catch (error) {
+    console.error("Error in /sendOTP:", error);
+    return res.status(500).json({
+      message: "Internal Server Error ❌",
     });
   }
+});
 
-  if (!confirmedPaswword) {
-    return res.status(400).send({ message: "Confirmed paswword is required" });
+router.post("/verifyOTP", async (req: any, res: any) => {
+  try {
+    const { phoneNumber, OTP } = req.body;
+
+    if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({ message: "Invalid phone number ❌" });
+    }
+
+    if (!OTP) {
+      return res.status(400).send({ message: "OTP is required" });
+    }
+
+    // Check if OTP is valid
+    const validOTP = await PhoneOTP.findOne({ phoneNumber, OTP });
+
+    if (!validOTP) {
+      return res.status(401).json({ message: "Invalid or expired OTP ❌" });
+    }
+
+    // OTP is valid — delete it to prevent reuse
+    await PhoneOTP.deleteMany({ phoneNumber });
+
+    return res.status(200).send({
+      message: "Phone number verified",
+    });
+  } catch (error) {
+    console.log("Error:", error);
+    return res.status(500).send({
+      message: "Internal Server Error",
+    });
   }
-
-  if (!token) {
-    return res.status(400).send({ message: "Invalid or expired token" });
-  }
-
-  const tokenInfo = await EmailVerification.findOne({ token });
-
-  if (!tokenInfo) {
-    return res.status(400).send({ message: "Invalid or expired token" });
-  }
-
-  const user = await User.findOne({ phone });
-
-  if (!user) {
-    return res
-      .status(400)
-      .send({ message: "Account does not exist with given number" });
-  }
-
-  if (password !== confirmedPaswword) {
-    return res.status(400).send({ message: "Password did not match" });
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  user.password = hashedPassword;
-
-  await user.save();
-
-  return res.status(200).send({ message: "Password rest successfully" });
 });
 
 export default router;

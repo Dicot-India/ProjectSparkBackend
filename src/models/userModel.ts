@@ -10,10 +10,6 @@ const UserSchema = new mongoose.Schema({
   email: {
     type: String,
   },
-  password : {
-    type : String,
-    required : true
-},
 
   gstNumber: {
     type: String,
@@ -59,13 +55,7 @@ const UserSchema = new mongoose.Schema({
   emailVerified: {
     type: Boolean,
     default: false,
-  },
-  
-  phoneVerified: {
-    type: Boolean,
-    default: false,
-    required: true,
-  },
+  }
 });
 
 const User = mongoose.model("User", UserSchema);

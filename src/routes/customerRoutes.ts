@@ -3,11 +3,11 @@ import Customer from "../models/customerModel.ts"; // Ensure correct path
 import User from "../models/userModel.ts";
 import authMiddleware from "../middlewares/authMiddleware.ts";
 import NewspaperPlans from "../models/newspaperPlan.ts";
-import checkAlreadySubscribePaper from "../middlewares/checkAlreadySubscribePaper.ts";
 import multer from "multer";
 import xlsx from "xlsx";
-import { DatabaseSync } from "node:sqlite";
 import mongoose from "mongoose";
+import removeExpirePlan from "../middlewares/removeExpirePlan.ts";
+import newspaperPlans from "../models/newspaperPlan.ts";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -330,7 +330,7 @@ router.post("/updateCustomer", async (req: any, res: any) => {
   }
 });
 
-router.post("/customerDetail", async (req: any, res: any) => {
+router.post("/customerDetail", removeExpirePlan, async (req: any, res: any) => {
   const { phoneNumber } = req.body;
 
   if (!phoneNumber) {
@@ -347,9 +347,16 @@ router.post("/customerDetail", async (req: any, res: any) => {
     return res.status(400).send({ message: "User not found" });
   }
 
+  const vendor = await User.findById(customer.id);
+
+  if (!vendor) {
+    return res.status(400).send({ messgae: "User not found" });
+  }
+
   return res.status(200).send({
     message: "Customer details retrieve successfully",
     customer: customer,
+    email: vendor.email ? vendor.email : "",
   });
 });
 
@@ -369,70 +376,148 @@ router.get("/plans", async (req: any, res: any) => {
   }
 });
 
-router.post(
-  "/addnewspaper",
-  checkAlreadySubscribePaper,
-  async (req: any, res: any) => {
-    const { customerID, newspapers } = req.body;
+router.post("/addnewspaper", async (req: any, res: any) => {
+  const { customerID, newspapers } = req.body;
 
-    if (!customerID) {
-      return res.status(400).send({ message: "Customer Id is required" });
+  if (!customerID) {
+    return res.status(400).send({ message: "Customer Id is required" });
+  }
+
+  if (!Array.isArray(newspapers) || newspapers.length < 1) {
+    return res.status(400).send({ message: "Newspapers is required" });
+  }
+
+  const customer = await Customer.findOne({ _id: customerID });
+
+  if (!customer) {
+    return res.status(400).send({ message: "Customer not found" });
+  }
+
+  const added = [];
+  const skipped = [];
+
+  for (const paper of newspapers) {
+    if (!paper.newspaperID) {
+      return res.status(400).send({ message: "Newspaper Id is required" });
     }
 
-    if (!Array.isArray(newspapers) || newspapers.length < 1) {
-      return res.status(400).send({ message: "Newspapers is required" });
+    const plan = await NewspaperPlans.findOne({
+      newspaperID: paper.newspaperID,
+    });
+
+    if (!plan) {
+      return res.status(400).send({
+        message: "No plan found related to provided newspaper id",
+      });
     }
 
-    const customer = await Customer.findOne({ _id: customerID });
-
-    if (!customer) {
-      return res.status(400).send({ message: "Customer not found" });
-    }
-
-    await Promise.all(
-      newspapers.map(async (paper: any) => {
-        if (paper.newspaperID) {
-          const plan = await NewspaperPlans.findOne({
-            newspaperID: paper.newspaperID,
-          });
-
-          if (plan) {
-            const dueDate = new Date();
-
-            dueDate.setTime(
-              dueDate.getTime() + paper.numberOfDays * 24 * 60 * 60 * 1000
-            );
-
-            const newsPaperObj = {
-              newspaperID: plan.newspaperID,
-              newspaperName: plan.newspaper,
-              price:
-                paper.numberOfDays === 28
-                  ? plan.monthlyPrice
-                  : plan.yearlyPrice,
-              paymentDate: new Date(),
-              dueDate,
-            };
-
-            customer.newsPapers.push(newsPaperObj);
-          } else {
-            return res.status(400).send({
-              message: "No plan found related to provided newspaper id",
-            });
-          }
-        } else {
-          return res.status(400).send({ message: "Newspaper Id is required" });
-        }
-      })
+    const alreadySubscribed = customer.newsPapers.some(
+      (subscribed) =>
+        subscribed.newspaperID === paper.newspaperID &&
+        Number(subscribed.price) === Number(plan.price)
     );
 
-    await customer.save();
+    if (alreadySubscribed) {
+      skipped.push({
+        newspaperID: paper.newspaperID,
+        newspaperName: plan.newspaper,
+        price: Number(plan.price),
+      });
+      continue;
+    }
 
-    return res
-      .status(200)
-      .send({ message: "Newspaper subscribe successfully" });
+    // 🧮 Calculate prorated price from today to end of month
+    const startDate = new Date();
+    const endOfMonth = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth() + 1,
+      0
+    ); // last date of current month
+
+    const totalDays = 30; // or use endOfMonth.getDate() if you want exact
+    const remainingDays = Math.max(
+      1,
+      endOfMonth.getDate() - startDate.getDate() + 1
+    );
+
+    const dailyPrice = Number(plan.price) / totalDays;
+    const proratedPrice = parseFloat((dailyPrice * remainingDays).toFixed(2));
+
+    const newsPaperObj = {
+      newspaperID: plan.newspaperID,
+      newspaperName: plan.newspaper,
+      price: proratedPrice,
+      startDate,
+      paid: false,
+    };
+
+    customer.newsPapers.push(newsPaperObj);
+    added.push(newsPaperObj);
   }
-);
+
+  await customer.save();
+
+  let message = "";
+  if (added.length && skipped.length) {
+    message = `Some newspapers were added, and some were already subscribed.`;
+  } else if (added.length) {
+    message = `All newspapers subscribed successfully.`;
+  } else {
+    message = `All newspapers were already subscribed.`;
+  }
+
+  return res.status(200).send({
+    message,
+    customer,
+  });
+});
+
+router.post("/removepaper", async (req: any, res: any) => {
+  const { customerID, newspapers } = req.body;
+
+  if (!customerID) {
+    return res.status(400).send({ message: "customerID is required" });
+  }
+
+  if (!Array.isArray(newspapers) || newspapers.length < 1) {
+    return res.status(400).send({
+      message:
+        "An array of newspapers (with newspaperID and price) is required",
+    });
+  }
+
+  const customer = await Customer.findOne({ _id: customerID });
+
+  if (!customer) {
+    return res.status(404).send({ message: "Customer not found" });
+  }
+
+  let removedCount = 0;
+
+  for (const { newspaperID, price } of newspapers) {
+    const index = customer.newsPapers.findIndex(
+      (paper: any) => paper.newspaperID === newspaperID && paper.price === price
+    );
+
+    if (index !== -1) {
+      customer.newsPapers.splice(index, 1); // removes 1 element at the found index
+      removedCount++;
+    }
+  }
+
+  if (removedCount === 0) {
+    return res.status(400).send({
+      message: "No matching newspapers found to remove",
+    });
+  }
+
+  await customer.save();
+
+  return res.status(200).send({
+    message: `${removedCount} newspaper(s) removed successfully`,
+    customer,
+  });
+});
 
 router.post(
   "/addCustomers",
@@ -460,28 +545,67 @@ router.post(
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Read the uploaded Excel file
+      // Read Excel
       const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
-      let data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
-        defval: "", // Ensures empty cells are treated as empty strings
+      const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        defval: "",
       });
 
-      // ✅ Trim column headers to remove extra spaces
-      const formattedData = data.map((row: any) => {
+      const formattedData = [];
+
+      for (const row of data as any[]) {
         const trimmedRow: any = {};
         Object.keys(row).forEach((key) => {
-          trimmedRow[key.trim()] = row[key]; // Trim key names
+          trimmedRow[key.trim()] = row[key];
         });
-        return trimmedRow;
-      });
 
-      // Extract phone numbers from the new customers
+        const newspaperToAdd: any[] = [];
+
+        if (trimmedRow.newsPapers && trimmedRow.duration) {
+          const splitedArr = trimmedRow.newsPapers.split(",");
+
+          for (const paperRaw of splitedArr) {
+            const trimmedPaperRaw = paperRaw.trim();
+
+            // Split by colon to check if custom price is provided
+            const [paperID, customPrice] = trimmedPaperRaw.split(":");
+
+            const plan = await newspaperPlans.findOne({
+              newspaperID: paperID,
+            });
+
+            if (!plan) {
+              return res.status(400).send({
+                message: `No plan available for newspaperID: ${paperID}`,
+              });
+            }
+
+            newspaperToAdd.push({
+              newspaperName: plan.newspaper,
+              newspaperID: plan.newspaperID,
+              startDate: new Date(),
+              price: customPrice
+                ? Number(customPrice) + Number(plan.price)
+                : Number(plan.price),
+              paid: false,
+            });
+          }
+
+          trimmedRow.newsPapers = newspaperToAdd;
+        }
+
+        formattedData.push(trimmedRow);
+      }
+
+      // Validate phone numbers
+      const isValidPhoneNumber = (phone: string): boolean =>
+        /^[6-9]\d{9}$/.test(phone);
+
       const newPhoneNumbers = formattedData.map(
-        (customer) => customer.phoneNumber
+        (customer: any) => customer.phoneNumber
       );
 
-      // ✅ Check if any phone number already exists
       const existingCustomers = await Customer.find({
         phoneNumber: { $in: newPhoneNumbers },
       });
@@ -493,21 +617,18 @@ router.post(
         });
       }
 
-      // ✅ Add user ID to each new customer
-      const newCustomers = formattedData.map((customer) => ({
+      // Add userID to each customer
+      const newCustomers = formattedData.map((customer: any) => ({
         ...customer,
-        id: userID, // Associate with the user
+        id: userID,
       }));
 
-      // ✅ Insert new customers
       const savedCustomers = await Customer.insertMany(newCustomers);
 
-      return res
-        .status(200)
-        .json({
-          message: "Successfully Added Customers",
-          data: savedCustomers,
-        });
+      return res.status(200).json({
+        message: "Successfully Added Customers",
+        data: savedCustomers,
+      });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ message: "Internal Server Error", error });

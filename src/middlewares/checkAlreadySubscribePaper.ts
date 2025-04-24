@@ -2,7 +2,6 @@ import Customer from "../models/customerModel.ts";
 
 const checkAlreadySubscribePaper = async (req: any, res: any, next: any) => {
   try {
-
     const { phone, newspapers } = req.body;
 
     if (!Array.isArray(newspapers) || newspapers.length < 1) {
@@ -19,15 +18,20 @@ const checkAlreadySubscribePaper = async (req: any, res: any, next: any) => {
         .json({ message: "No user found for given number" });
     }
 
-    newspapers.forEach((paper) => {
-      customer.newsPapers.forEach((subscribedPaper) => {
-        if (paper.newspaperID === subscribedPaper.newspaperID) {
-          return res
-            .status(400)
-            .send({ message: "You have already subscribed on of selected newspaper" });
-        }
-      });
-    });
+    for (const paper of newspapers) {
+      const alreadySubscribed = customer.newsPapers.some(
+        (subscribed) =>
+          subscribed.newspaperID === paper.newspaperID &&
+          subscribed.price === paper.price
+      );
+
+      if (alreadySubscribed) {
+        return res.status(400).send({
+          message:
+            "You have already subscribed to one of the selected newspapers",
+        });
+      }
+    }
 
     next();
   } catch (error) {

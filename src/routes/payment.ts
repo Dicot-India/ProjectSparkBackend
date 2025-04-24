@@ -1,10 +1,11 @@
 import express from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import NewspaperPlans from "../models/newspaperPlan.ts";
 import Customer from "../models/customerModel.ts";
 import PaymentLogs from "../models/paymentLogs.ts";
-import checkAlreadySubscribePaper from "../middlewares/checkAlreadySubscribePaper.ts";
+import SendMail from "../utils/emailOtp.ts";
+import SendWhatsappMsg from "../utils/SendWhatsappMsg.ts";
+import User from "../models/userModel.ts";
 
 const router = express.Router();
 
@@ -13,46 +14,38 @@ const instance = new Razorpay({
   key_secret: process.env.PAY_KEY_SECRET,
 });
 
-router.post(
-  "/orderId",
-  checkAlreadySubscribePaper,
-  async (req: any, res: any) => {
-    try {
-      let options = {
-        amount: req.body.amount * 100,
-        currency: "INR",
-        receipt: "receipt#1",
-      };
+router.post("/orderId", async (req: any, res: any) => {
+  try {
+    let options = {
+      amount: req.body.amount * 100,
+      currency: "INR",
+      receipt: "receipt#1",
+    };
 
-      if (!req.body.amount) {
-        res.status(404).send({ message: "Amount is missing" });
-      }
-
-      const order = await instance.orders.create(options);
-
-      if (!order) {
-        res.status(404).send({ message: "Could't create the order" });
-      }
-
-      res.status(200).send({
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-      });
-    } catch (err) {
-      return res.status(500).send({ message: "Internal Server Error" });
+    if (!req.body.amount) {
+      res.status(404).send({ message: "Amount is missing" });
     }
+
+    const order = await instance.orders.create(options);
+
+    if (!order) {
+      res.status(404).send({ message: "Could't create the order" });
+    }
+
+    res.status(200).send({
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+    });
+  } catch (err) {
+    return res.status(500).send({ message: "Internal Server Error" });
   }
-);
+});
 
 router.post("/verify", async (req: any, res: any) => {
   try {
-    const { newspapers, phone, orderID, paymentID, razorpaySignature } =
-      req.body;
+    const { phone, orderID, paymentID, razorpaySignature, email } = req.body;
 
-    if (!Array.isArray(newspapers) || newspapers.length < 1) {
-      return res.status(400).json({ message: "Newspapers are required" });
-    }
     if (!phone) return res.status(400).json({ message: "Phone is required" });
     if (!orderID)
       return res.status(400).json({ message: "Order ID is required" });
@@ -65,10 +58,18 @@ router.post("/verify", async (req: any, res: any) => {
 
     // Find customer
     const customer = await Customer.findOne({ phoneNumber: phone });
+
     if (!customer) {
       return res
         .status(404)
         .json({ message: "No user found for given number" });
+    }
+    const user = await User.findById(customer.id);
+
+    if (!user) {
+      return res.status(400).send({
+        message: "User not found",
+      });
     }
 
     // Verify payment signature
@@ -90,52 +91,23 @@ router.post("/verify", async (req: any, res: any) => {
       return res.status(400).json({ message: "Payment verification failed" });
     }
 
-    // newspapers.forEach((paper) => {
-    //   customer.newsPapers.forEach((subscribedPaper) => {
-    //     if (paper.newspaperID === subscribedPaper.newspaperID) {
-    //       return res
-    //         .status(400)
-    //         .send({ message: "You have already subscribed on of newspaper" });
-    //     }
-    //   });
-    // });
+    const updatedCustomerArr: any = [];
 
-    await Promise.all(
-      newspapers.map(async (paper) => {
-        if (paper.newspaperID) {
-          const plan = await NewspaperPlans.findOne({
-            newspaperID: paper.newspaperID,
-          });
+    await customer.newsPapers.forEach((paper: any) => {
+      const dueDate = new Date();
+      dueDate.setTime(dueDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-          if (plan) {
-            const dueDate = new Date();
+      const newsPaperObj = {
+        newspaperID: paper.newspaperID,
+        newspaperName: paper.newspaperName,
+        price: paper.price,
+        paid: true,
+      };
 
-            dueDate.setTime(
-              dueDate.getTime() + paper.numberOfDays * 24 * 60 * 60 * 1000
-            );
+      updatedCustomerArr.push(newsPaperObj);
+    });
 
-            const newsPaperObj = {
-              newspaperID: plan.newspaperID,
-              newspaperName: plan.newspaper,
-              price:
-                paper.numberOfDays === 28
-                  ? plan.monthlyPrice
-                  : plan.yearlyPrice,
-              paymentDate: new Date(),
-              dueDate,
-            };
-
-            customer.newsPapers.push(newsPaperObj);
-          } else {
-            return res.status(400).send({
-              message: "No plan found related to provided newspaper id",
-            });
-          }
-        } else {
-          return res.status(400).send({ message: "Newspaper Id is required" });
-        }
-      })
-    );
+    customer.newsPapers = updatedCustomerArr;
 
     const paymentInfo = new PaymentLogs({
       paymentID: paymentResponse.id,
@@ -151,6 +123,32 @@ router.post("/verify", async (req: any, res: any) => {
 
     // Save customer
     await customer.save();
+
+    const message = `Customer Related Payment Details<br>
+        Name: ${customer.customerName}<br>
+        Phone number: ${paymentInfo.phone}<br>
+        Address: ${customer.unitNumber} ${customer.society} ${customer.street} ${customer.landmark}<br>
+        Amount: ${paymentInfo.price}<br>
+        
+      `;
+
+    if (email) {
+      const emailContent = {
+        subject: "Customer Payment Information",
+        body: message,
+      };
+      await SendMail(email, emailContent);
+    }
+
+    const whMessage =
+      `*Customer Payment Details:* ` +
+      `*Name:* ${customer.customerName} | ` +
+      `*Phone:* ${paymentInfo.phone} | ` +
+      `*Address:* ${customer.unitNumber} ${customer.society} ${customer.street} ${customer.landmark} | ` +
+      `*Amount:* ₹${paymentInfo.price} |` + 
+      `PaymentID:* ₹${paymentResponse.id}`;
+
+    await SendWhatsappMsg(user.phone, whMessage);
 
     return res.status(200).json({ message: "Payment completed" });
   } catch (error) {
