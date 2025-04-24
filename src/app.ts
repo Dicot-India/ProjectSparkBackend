@@ -9,6 +9,7 @@ import customerRoutes from "./routes/customerRoutes.ts";
 import payRoutes from "./routes/payment.ts";
 import planRoutes from "./routes/plan.ts";
 import SendWhatsappMsg from "./utils/SendWhatsappMsg.ts";
+import "./cron/monthlyBilling.ts";
 
 dotenv.config();
 

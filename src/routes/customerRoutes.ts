@@ -411,9 +411,6 @@ router.post("/addnewspaper", async (req: any, res: any) => {
       });
     }
 
-    const dueDate = new Date();
-    dueDate.setTime(dueDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-
     const alreadySubscribed = customer.newsPapers.some(
       (subscribed) =>
         subscribed.newspaperID === paper.newspaperID &&
@@ -429,13 +426,29 @@ router.post("/addnewspaper", async (req: any, res: any) => {
       continue;
     }
 
+    // 🧮 Calculate prorated price from today to end of month
+    const startDate = new Date();
+    const endOfMonth = new Date(
+      startDate.getFullYear(),
+      startDate.getMonth() + 1,
+      0
+    ); // last date of current month
+
+    const totalDays = 30; // or use endOfMonth.getDate() if you want exact
+    const remainingDays = Math.max(
+      1,
+      endOfMonth.getDate() - startDate.getDate() + 1
+    );
+
+    const dailyPrice = Number(plan.price) / totalDays;
+    const proratedPrice = parseFloat((dailyPrice * remainingDays).toFixed(2));
+
     const newsPaperObj = {
       newspaperID: plan.newspaperID,
       newspaperName: plan.newspaper,
-      price: Number(plan.price),
-      paymentDate: new Date(),
+      price: proratedPrice,
+      startDate,
       paid: false,
-      dueDate,
     };
 
     customer.newsPapers.push(newsPaperObj);
@@ -532,19 +545,19 @@ router.post(
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Read the uploaded Excel file
+      // Read Excel
       const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
       const sheetName = workbook.SheetNames[0];
-      let data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
-        defval: "", // Ensures empty cells are treated as empty strings
+      const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        defval: "",
       });
+
       const formattedData = [];
 
       for (const row of data as any[]) {
         const trimmedRow: any = {};
         Object.keys(row).forEach((key) => {
-          const trimmedKey = key.trim();
-          trimmedRow[trimmedKey] = row[key];
+          trimmedRow[key.trim()] = row[key];
         });
 
         const newspaperToAdd: any[] = [];
@@ -552,25 +565,29 @@ router.post(
         if (trimmedRow.newsPapers && trimmedRow.duration) {
           const splitedArr = trimmedRow.newsPapers.split(",");
 
-          for (const paper of splitedArr) {
-            const trimmedPaper = paper.trim();
+          for (const paperRaw of splitedArr) {
+            const trimmedPaperRaw = paperRaw.trim();
+
+            // Split by colon to check if custom price is provided
+            const [paperID, customPrice] = trimmedPaperRaw.split(":");
 
             const plan = await newspaperPlans.findOne({
-              newspaperID: trimmedPaper.charAt(0), // or use actual ID logic
+              newspaperID: paperID,
             });
 
             if (!plan) {
               return res.status(400).send({
-                message: "No plan available for one of the newspapers",
+                message: `No plan available for newspaperID: ${paperID}`,
               });
             }
 
             newspaperToAdd.push({
-              newspaperName: trimmedPaper,
-              newspaperID: trimmedPaper.charAt(0),
-              paymentDate: new Date(),
-              price: Number(plan.price),
-              dueDate: new Date(new Date().setDate(new Date().getDate() + 30)),// due in 30 days
+              newspaperName: plan.newspaper,
+              newspaperID: plan.newspaperID,
+              startDate: new Date(),
+              price: customPrice
+                ? Number(customPrice) + Number(plan.price)
+                : Number(plan.price),
               paid: false,
             });
           }
@@ -581,18 +598,14 @@ router.post(
         formattedData.push(trimmedRow);
       }
 
-      // Extract phone numbers from the new customers
-
-      function isValidPhoneNumber(phone: string): boolean {
-        const phoneRegex = /^[6-9]\d{9}$/;
-        return phoneRegex.test(phone);
-      }
+      // Validate phone numbers
+      const isValidPhoneNumber = (phone: string): boolean =>
+        /^[6-9]\d{9}$/.test(phone);
 
       const newPhoneNumbers = formattedData.map(
         (customer: any) => customer.phoneNumber
       );
 
-      // ✅ Check if any phone number already exists
       const existingCustomers = await Customer.find({
         phoneNumber: { $in: newPhoneNumbers },
       });
@@ -604,13 +617,12 @@ router.post(
         });
       }
 
-      // ✅ Add user ID to each new customer
+      // Add userID to each customer
       const newCustomers = formattedData.map((customer: any) => ({
         ...customer,
-        id: userID, // Associate with the user
+        id: userID,
       }));
 
-      // ✅ Insert new customers
       const savedCustomers = await Customer.insertMany(newCustomers);
 
       return res.status(200).json({

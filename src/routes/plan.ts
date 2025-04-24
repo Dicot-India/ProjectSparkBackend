@@ -1,5 +1,6 @@
 import express from "express";
 import Customer from "../models/customerModel.ts";
+import newspaperPlans from "../models/newspaperPlan.ts";
 
 const router = express.Router();
 
@@ -132,15 +133,33 @@ router.post("/continue", async (req: any, res: any) => {
   const daysPaused = Math.max(0, Math.floor(timeDiff / (1000 * 3600 * 24)));
 
   if (daysPaused > 0) {
-    customer.newsPapers.forEach((paper: any) => {
-      if (paper.price) {
-        const totalDays = 30;
-        const dailyPrice = paper.price / totalDays;
-        const reduction = dailyPrice * daysPaused;
-        const newPrice = Math.max(0, paper.price - reduction);
-        paper.price = parseFloat(newPrice.toFixed(2));
+    // customer.newsPapers.forEach((paper: any) => {
+    //   if (paper.price) {
+    //     const totalDays = 30;
+    //     const dailyPrice = paper.price / totalDays;
+    //     const reduction = dailyPrice * daysPaused;
+    //     const newPrice = Math.max(0, paper.price - reduction);
+    //     paper.price = parseFloat(newPrice.toFixed(2));
+    //   }
+    // });
+
+    for (const paper of customer.newsPapers) {
+      if (paper.newspaperID && paper.price) {
+        const plan = await newspaperPlans.findOne({
+          newspaperID: paper.newspaperID,
+        });
+
+        if (plan) {
+          const totalDays = 30;
+          const dailyPrice = plan.price / totalDays;
+          console.log("dailyPrice:" , dailyPrice)
+          const reduction = dailyPrice * daysPaused;
+          console.log("reduction:" , reduction);
+          const newPrice = Math.max(0, paper.price - reduction);
+          paper.price = parseFloat(newPrice.toFixed(2));
+        }
       }
-    });
+    }
   }
 
   customer.pauseDate = null;
@@ -175,13 +194,17 @@ router.post("/setPaidStatus", async (req: any, res: any) => {
   }
 
   if (customer.newsPapers.length > 0) {
+
     customer.newsPapers.forEach((paper) => {
       paper.paid = !paper.paid;
     });
+
   } else {
+
     return res.status(400).send({
       message: "Customer have not subscribe any of newspaper",
     });
+
   }
 
   await customer.save();
