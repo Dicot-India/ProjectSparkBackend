@@ -99,7 +99,7 @@ router.post("/verify", async (req: any, res: any) => {
 
       const newsPaperObj = {
         newspaperID: paper.newspaperID,
-        newspaperName: paper.newspaper,
+        newspaperName: paper.newspaperName,
         price: paper.price,
         paid: true,
       };
@@ -128,7 +128,8 @@ router.post("/verify", async (req: any, res: any) => {
         Name: ${customer.customerName}<br>
         Phone number: ${paymentInfo.phone}<br>
         Address: ${customer.unitNumber} ${customer.society} ${customer.street} ${customer.landmark}<br>
-        Amount: ${paymentInfo.price}
+        Amount: ${paymentInfo.price}<br>
+        
       `;
 
     if (email) {
@@ -144,7 +145,8 @@ router.post("/verify", async (req: any, res: any) => {
       `*Name:* ${customer.customerName} | ` +
       `*Phone:* ${paymentInfo.phone} | ` +
       `*Address:* ${customer.unitNumber} ${customer.society} ${customer.street} ${customer.landmark} | ` +
-      `*Amount:* ₹${paymentInfo.price}`;
+      `*Amount:* ₹${paymentInfo.price} |` + 
+      `PaymentID:* ₹${paymentResponse.id}`;
 
     await SendWhatsappMsg(user.phone, whMessage);
 

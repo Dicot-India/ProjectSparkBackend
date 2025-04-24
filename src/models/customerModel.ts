@@ -97,14 +97,10 @@ const customerSchema = new mongoose.Schema({
         type: Number,
       },
 
-      paymentDate: {
+      startDate: {
         type: Date,
       },
       
-      dueDate: {
-        type: Date,
-      },
-
       paid: {
         type: Boolean,
         default: false,

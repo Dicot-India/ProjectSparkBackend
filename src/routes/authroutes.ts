@@ -238,8 +238,6 @@ router.post("/signin", async (req: any, res: any) => {
   }
 });
 
-
-
 router.post("/sendOTP", async (req: any, res: any) => {
   try {
     const { phoneNumber } = req.body;
