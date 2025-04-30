@@ -1,18 +1,15 @@
 {
   "compilerOptions": {
-    /* Visit https://aka.ms/tsconfig to read more about this file */
-    /* Language and Environment */
     "target": "ES6",
-    /* Modules */
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "allowImportingTsExtensions": true,
-    "declaration": true,
-    "emitDeclarationOnly": true,
+    "outDir": "dist",
+    "rootDir": "src",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    /* Type Checking */
     "strict": true,
     "skipLibCheck": true
-  }
+  },
+  "include": ["src"]
 }
