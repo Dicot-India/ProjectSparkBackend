@@ -6,7 +6,6 @@ import NewspaperPlans from "../models/newspaperPlan.ts";
 import multer from "multer";
 import xlsx from "xlsx";
 import mongoose from "mongoose";
-import removeExpirePlan from "../middlewares/removeExpirePlan.ts";
 import newspaperPlans from "../models/newspaperPlan.ts";
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -330,7 +329,7 @@ router.post("/updateCustomer", async (req: any, res: any) => {
   }
 });
 
-router.post("/customerDetail", removeExpirePlan, async (req: any, res: any) => {
+router.post("/customerDetail", async (req: any, res: any) => {
   const { phoneNumber } = req.body;
 
   if (!phoneNumber) {
