@@ -255,17 +255,16 @@ router.post("/sendOTP", async (req: any, res: any) => {
     const message = `Hi there, This is OTP for login: ${otp}`;
 
     const msgSent = await SendWhatsappMsg(phoneNumber, message);
-
-    if (!msgSent) {
-      return res.status(500).json({ message: "Failed to send OTP ❌" });
-    }
-
     const phoneOTPObj = new PhoneOTP({
       phoneNumber,
       OTP: otp,
     });
 
     await phoneOTPObj.save();
+
+    if (!msgSent) {
+      return res.status(500).json({ message: "Failed to send OTP ❌" });
+    }
 
     return res.status(200).json({
       message: "OTP sent to your phone number on WhatsApp ✅",
