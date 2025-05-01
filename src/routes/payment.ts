@@ -1,11 +1,11 @@
 import express from "express";
 import Razorpay from "razorpay";
 import crypto from "crypto";
-import Customer from "../models/customerModel.ts";
-import PaymentLogs from "../models/paymentLogs.ts";
-import SendMail from "../utils/emailOtp.ts";
-import SendWhatsappMsg from "../utils/SendWhatsappMsg.ts";
-import User from "../models/userModel.ts";
+import Customer from "../models/customerModel";
+import PaymentLogs from "../models/paymentLogs";
+import SendMail from "../utils/emailOtp";
+import SendWhatsappMsg from "../utils/SendWhatsappMsg";
+import User from "../models/userModel";
 
 const router = express.Router();
 

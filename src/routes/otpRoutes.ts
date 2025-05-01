@@ -1,9 +1,9 @@
 import express from "express";
-import SendMail from "../utils/emailOtp.ts";
-import User from "../models/userModel.ts";
-import EmailVerification from "../models/emailVerificationModel.ts";
+import SendMail from "../utils/emailOtp";
+import User from "../models/userModel";
+import EmailVerification from "../models/emailVerificationModel";
 import crypto from "crypto";
-import proxy from "../proxy.ts";
+import proxy from "../proxy";
 
 const router = express.Router();
 

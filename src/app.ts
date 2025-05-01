@@ -1,14 +1,14 @@
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import connectDB from "./db.ts";
-import authRoutes from "./routes/authroutes.ts";
-import otpRoutes from "./routes/otpRoutes.ts";
+import connectDB from "./db";
+import authRoutes from "./routes/authroutes";
+import otpRoutes from "./routes/otpRoutes";
 import dotenv from "dotenv";
-import customerRoutes from "./routes/customerRoutes.ts";
-import payRoutes from "./routes/payment.ts";
-import planRoutes from "./routes/plan.ts";
-import SendWhatsappMsg from "./utils/SendWhatsappMsg.ts";
+import customerRoutes from "./routes/customerRoutes";
+import payRoutes from "./routes/payment";
+import planRoutes from "./routes/plan";
+import SendWhatsappMsg from "./utils/SendWhatsappMsg";
 import "./cron/monthlyBilling.ts";
 
 dotenv.config();
