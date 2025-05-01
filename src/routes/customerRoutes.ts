@@ -553,11 +553,22 @@ router.post(
 
       const formattedData = [];
 
+      // Phone validation regex
+      const isValidPhoneNumber = (phone: string): boolean =>
+        /^[6-9]\d{9}$/.test(phone);
+
       for (const row of data as any[]) {
         const trimmedRow: any = {};
         Object.keys(row).forEach((key) => {
           trimmedRow[key.trim()] = row[key];
         });
+
+        // Validate phone number
+        if (!isValidPhoneNumber(trimmedRow.phoneNumber)) {
+          return res.status(400).json({
+            message: `Invalid phone number: ${trimmedRow.phoneNumber}`,
+          });
+        }
 
         const newspaperToAdd: any[] = [];
 
@@ -566,13 +577,11 @@ router.post(
 
           for (const paperRaw of splitedArr) {
             const trimmedPaperRaw = paperRaw.trim();
+            if (!trimmedPaperRaw) continue;
 
-            // Split by colon to check if custom price is provided
             const [paperID, customPrice] = trimmedPaperRaw.split(":");
 
-            const plan = await newspaperPlans.findOne({
-              newspaperID: paperID,
-            });
+            const plan = await newspaperPlans.findOne({ newspaperID: paperID });
 
             if (!plan) {
               return res.status(400).send({
@@ -592,15 +601,15 @@ router.post(
           }
 
           trimmedRow.newsPapers = newspaperToAdd;
+        } else {
+          // Ensure newsPapers is always an array
+          trimmedRow.newsPapers = [];
         }
 
         formattedData.push(trimmedRow);
       }
 
-      // Validate phone numbers
-      const isValidPhoneNumber = (phone: string): boolean =>
-        /^[6-9]\d{9}$/.test(phone);
-
+      // Check for duplicates
       const newPhoneNumbers = formattedData.map(
         (customer: any) => customer.phoneNumber
       );
@@ -630,9 +639,12 @@ router.post(
       });
     } catch (error) {
       console.error(error);
-      return res.status(500).json({ message: "Internal Server Error", error });
+      return res
+        .status(500)
+        .json({ message: "Internal Server Error", error: error });
     }
   }
 );
+
 
 export default router;
