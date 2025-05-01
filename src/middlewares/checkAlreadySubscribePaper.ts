@@ -1,4 +1,4 @@
-import Customer from "../models/customerModel.ts";
+import Customer from "../models/customerModel";
 
 const checkAlreadySubscribePaper = async (req: any, res: any, next: any) => {
   try {

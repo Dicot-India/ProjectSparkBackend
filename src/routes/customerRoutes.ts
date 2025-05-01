@@ -1,12 +1,12 @@
 import express from "express";
-import Customer from "../models/customerModel.ts"; // Ensure correct path
-import User from "../models/userModel.ts";
-import authMiddleware from "../middlewares/authMiddleware.ts";
-import NewspaperPlans from "../models/newspaperPlan.ts";
+import Customer from "../models/customerModel"; // Ensure correct path
+import User from "../models/userModel";
+import authMiddleware from "../middlewares/authMiddleware";
+import NewspaperPlans from "../models/newspaperPlan";
 import multer from "multer";
 import xlsx from "xlsx";
 import mongoose from "mongoose";
-import newspaperPlans from "../models/newspaperPlan.ts";
+import newspaperPlans from "../models/newspaperPlan";
 
 const upload = multer({ storage: multer.memoryStorage() });
 

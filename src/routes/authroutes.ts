@@ -1,13 +1,13 @@
 // sign-up
 import express from "express";
-import User from "../models/userModel.ts"; // Ensure correct path
+import User from "../models/userModel"; // Ensure correct path
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import SendMail from "../utils/emailOtp.ts";
-import EmailVerification from "../models/emailVerificationModel.ts";
-import SendWhatsappMsg from "../utils/SendWhatsappMsg.ts";
-import PhoneOTP from "../models/phoneVerificationModel.ts";
+import SendMail from "../utils/emailOtp";
+import EmailVerification from "../models/emailVerificationModel";
+import SendWhatsappMsg from "../utils/SendWhatsappMsg";
+import PhoneOTP from "../models/phoneVerificationModel";
 
 const router = express.Router();
 // phoneNumber

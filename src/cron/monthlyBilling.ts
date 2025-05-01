@@ -1,6 +1,6 @@
 import cron from "node-cron";
-import Customer from "../models/customerModel.ts";
-import NewspaperPlans from "../models/newspaperPlan.ts";
+import Customer from "../models/customerModel";
+import NewspaperPlans from "../models/newspaperPlan";
 
 cron.schedule("0 0 1 * *", async () => {
   console.log("Running monthly billing job...");

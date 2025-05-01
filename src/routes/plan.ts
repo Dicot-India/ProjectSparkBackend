@@ -1,6 +1,6 @@
 import express from "express";
-import Customer from "../models/customerModel.ts";
-import newspaperPlans from "../models/newspaperPlan.ts";
+import Customer from "../models/customerModel";
+import newspaperPlans from "../models/newspaperPlan";
 
 const router = express.Router();
 
