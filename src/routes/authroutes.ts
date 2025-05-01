@@ -272,7 +272,7 @@ router.post("/sendOTP", async (req: any, res: any) => {
   } catch (error) {
     console.error("Error in /sendOTP:", error);
     return res.status(500).json({
-      message: "Internal Server Error ❌",
+      message: `Internal Server Error ❌: ${error}`
     });
   }
 });
