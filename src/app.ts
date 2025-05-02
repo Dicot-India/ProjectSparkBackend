@@ -15,7 +15,11 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  allowedHeaders: ["*"]
+}));
+
 app.use(bodyParser.json());
 
 connectDB();
