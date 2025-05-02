@@ -1,13 +1,13 @@
 // sign-up
 import express from "express";
 import User from "../models/userModel"; // Ensure correct path
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import SendMail from "../utils/emailOtp";
 import EmailVerification from "../models/emailVerificationModel";
 import SendWhatsappMsg from "../utils/SendWhatsappMsg";
 import PhoneOTP from "../models/phoneVerificationModel";
+import backendProxy from "../proxy";
 
 const router = express.Router();
 // phoneNumber
@@ -46,7 +46,6 @@ router.post("/signUp", async (req: any, res: any) => {
 
     // 1️⃣ Validate Input
     if (
-      !gstNumber ||
       !companyName ||
       !unitNumber ||
       !city ||
@@ -64,21 +63,30 @@ router.post("/signUp", async (req: any, res: any) => {
       return res.status(400).json({ message: "Invalid phone number ❌" });
     }
 
+    let existingUser = null;
     // 2️⃣ Check If User Already Exists
-    const existingUser = await User.findOne({ gstNumber });
-    const existingNumber = await User.findOne({ phone });
-    const existingEmail = await User.findOne({ email });
+    if(gstNumber){
+      existingUser = await User.findOne({
+        $or: [
+          { gstNumber },
+          { phone },
+          { email }
+        ]
+      });
+    }
+    else{
+      existingUser = await User.findOne({
+        $or: [
+          { phone },
+          { email }
+        ]
+      });
+    }
 
     if (existingUser) {
       return res
         .status(400)
-        .json({ message: "User with this GST Number already exists." });
-    }
-
-    if (existingNumber) {
-      return res
-        .status(400)
-        .json({ message: "User with this phone Number already exists." });
+        .json({ message: "User already exists." });
     }
 
     let userInfo: any = {
@@ -102,14 +110,6 @@ router.post("/signUp", async (req: any, res: any) => {
       userInfo.email = email;
     }
 
-    if (existingEmail) {
-      if (existingEmail.email) {
-        return res
-          .status(400)
-          .json({ message: "User with this Email already exists." });
-      }
-    }
-
     // 3️⃣ Create New User Object
     const newUser = new User(userInfo);
 
@@ -118,7 +118,7 @@ router.post("/signUp", async (req: any, res: any) => {
     // 5️⃣ Return Success Response
     if (email) {
       const verificationToken = crypto.randomBytes(32).toString("hex");
-      const verificationURL = `http://localhost:8000/otp/verifyEmail?token=${verificationToken}`;
+      const verificationURL = `${backendProxy}/otp/verifyEmail?token=${verificationToken}`;
 
       const emailBody = {
         subject: "Email Verification",
@@ -182,38 +182,6 @@ router.post("/signin", async (req: any, res: any) => {
 
     // OTP is valid — delete it to prevent reuse
     await PhoneOTP.deleteMany({ phoneNumber: phone });
-
-    // Optional: Email verification logic if still needed
-    // if (user.email) {
-    //   if (!user.emailVerified) {
-    //     const verificationToken = crypto.randomBytes(32).toString("hex");
-    //     const verificationURL = `http://localhost:8000/otp/verifyEmail?token=${verificationToken}`;
-
-    //     const emailBody = {
-    //       subject: "Email Verification",
-    //       body: `Click the link below to verify your email:\n\n${verificationURL}\n\nThis link will expire in 1 hour.`,
-    //     };
-
-    //     const sendMailRes = await SendMail(user.email, emailBody);
-
-    //     if (sendMailRes && sendMailRes === 200) {
-    //       await EmailVerification.deleteOne({ email: user.email });
-
-    //       const newEmailVerification = new EmailVerification({
-    //         email: user.email,
-    //         token: verificationToken,
-    //       });
-
-    //       await newEmailVerification.save();
-    //       return res.status(200).send({
-    //         message:
-    //           "Since email was not verified we have sent you email verification again",
-    //       });
-    //     } else {
-    //       return res.status(400).send({ message: "First verify email" });
-    //     }
-    //   }
-    // }
 
     // Generate JWT
     const token = jwt.sign(
