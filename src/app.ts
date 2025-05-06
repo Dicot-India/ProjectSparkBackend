@@ -8,8 +8,7 @@ import dotenv from "dotenv";
 import customerRoutes from "./routes/customerRoutes";
 import payRoutes from "./routes/payment";
 import planRoutes from "./routes/plan";
-import SendWhatsappMsg from "./utils/SendWhatsappMsg";
-import "./cron/monthlyBilling.ts";
+import "./cron/monthlyBilling";
 
 dotenv.config();
 
@@ -31,14 +30,9 @@ app.use("/pay", payRoutes);
 app.use("/plan", planRoutes);
 
 app.get("/test", async (req: any, res: any) => {
-  
-  const message = `Hii this the otp for login : 123456`;
-
-  const msg = await SendWhatsappMsg("9104451509", message);
 
   return res.status(200).send({
-    message: "Message Sent Successfully",
-    msg,
+    message: "Server is working",
   });
 });
 

@@ -13,8 +13,6 @@ const UserSchema = new mongoose.Schema({
 
   gstNumber: {
     type: String,
-    required: true,
-    unique: true,
   },
 
   companyName: {

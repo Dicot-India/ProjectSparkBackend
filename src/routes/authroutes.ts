@@ -45,14 +45,7 @@ router.post("/signUp", async (req: any, res: any) => {
     } = req.body;
 
     // 1️⃣ Validate Input
-    if (
-      !companyName ||
-      !unitNumber ||
-      !city ||
-      !state ||
-      !street ||
-      !society
-    ) {
+    if (!companyName || !unitNumber || !city || !state || !street || !society) {
       return res
         .status(400)
         .json({ message: "Please fill all required fields." });
@@ -65,28 +58,18 @@ router.post("/signUp", async (req: any, res: any) => {
 
     let existingUser = null;
     // 2️⃣ Check If User Already Exists
-    if(gstNumber){
+    if (gstNumber) {
       existingUser = await User.findOne({
-        $or: [
-          { gstNumber },
-          { phone },
-          { email }
-        ]
+        $or: [{ gstNumber }, { phone }, { email }],
       });
-    }
-    else{
+    } else {
       existingUser = await User.findOne({
-        $or: [
-          { phone },
-          { email }
-        ]
+        $or: [{ phone }, { email }],
       });
     }
 
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "User already exists." });
+      return res.status(400).json({ message: "User already exists." });
     }
 
     let userInfo: any = {
@@ -223,6 +206,7 @@ router.post("/sendOTP", async (req: any, res: any) => {
     const message = `Hi there, This is OTP for login: ${otp}`;
 
     const msgSent = await SendWhatsappMsg(phoneNumber, message);
+    
     const phoneOTPObj = new PhoneOTP({
       phoneNumber,
       OTP: otp,
@@ -240,7 +224,7 @@ router.post("/sendOTP", async (req: any, res: any) => {
   } catch (error) {
     console.error("Error in /sendOTP:", error);
     return res.status(500).json({
-      message: `Internal Server Error ❌: ${error}`
+      message: `Internal Server Error ❌: ${error}`,
     });
   }
 });
@@ -274,6 +258,17 @@ router.post("/verifyOTP", async (req: any, res: any) => {
     console.log("Error:", error);
     return res.status(500).send({
       message: "Internal Server Error",
+    });
+  }
+});
+
+router.post("/logout", (req: any, res: any) => {
+  try {
+    // Instruct the client to delete the token
+    return res.status(200).json({ message: "Logged out successfully ✅" });
+  } catch (error) {
+    return res.status(500).send({
+      message: "Internal Server Error in Logout",
     });
   }
 });
